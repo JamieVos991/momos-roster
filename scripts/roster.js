@@ -6,6 +6,7 @@ const dayTitle = document.getElementById("day-title");
 const listBediening = document.getElementById("list-bediening");
 const listKeuken = document.getElementById("list-keuken");
 const emptyState = document.getElementById("empty-state");
+const rosterEl = document.getElementById("roster");
 const prevBtn = document.getElementById("prev-day");
 const nextBtn = document.getElementById("next-day");
 
@@ -48,6 +49,8 @@ function renderCards(list, names) {
 
 async function loadDay(date) {
   dayTitle.textContent = formatTitle(date);
+  rosterEl.hidden = false;
+  emptyState.hidden = true;
   listBediening.innerHTML = '<li class="card card--loading"></li>';
   listKeuken.innerHTML = '<li class="card card--loading"></li>';
 
@@ -59,10 +62,11 @@ async function loadDay(date) {
     const countB = renderCards(listBediening, data.bediening);
     const countK = renderCards(listKeuken, data.keuken);
 
-    emptyState.hidden = countB + countK > 0;
+    const hasShifts = countB + countK > 0;
+    rosterEl.hidden = !hasShifts;
+    emptyState.hidden = hasShifts;
   } catch (err) {
-    listBediening.innerHTML = "";
-    listKeuken.innerHTML = "";
+    rosterEl.hidden = true;
     emptyState.textContent = `Fout bij laden: ${err.message}`;
     emptyState.hidden = false;
     console.error(err);

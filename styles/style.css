@@ -102,10 +102,12 @@ body {
 .btn--icon {
   background: var(--c-darkblue);
   color: #fff;
-  padding: 0.4em 0.8em;
+  padding: 1rem;
+  aspect-ratio: 1/1;
   font-size: 1.2rem;
   border-radius: var(--radius);
 }
+
 .btn--icon:hover {
   background: var(--c-tertiary);
 }
