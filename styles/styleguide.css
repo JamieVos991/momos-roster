@@ -1,0 +1,229 @@
+@font-face {
+  font-family: "";
+  src: url("../assets/fonts/") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base, components, utilities;
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  :root {
+    --f-size: 1rem;
+    --f-size-h1: clamp();
+    --f-size-h2: clamp();
+    --f-size-h3: clamp();
+    --f-size-h4: clamp();
+    --f-size-h5: clamp();
+    --f-size-h6: clamp();
+
+    --c-primary: ;
+    --c-secondary: ;
+    --c-tertiary: ;
+
+    --c-succes-h: 142;
+    --c-succes-s: 60%;
+
+    --c-waarschuwing-h: 40;
+    --c-waarschuwing-s: 90%;
+
+    --c-fout-h: 0;
+    --c-fout-s: 70%;
+
+    --c-light: hsl(0, 0%, 96%);
+    --c-dark: hsl(0, 0%, 7%);
+
+    --lh-p: 1.6;
+    --lh-h: 1.4;
+
+    --f-family-serif: sans-serif;
+
+    --space-xs: 0.25rem;
+    --space-s: 0.5rem;
+    --space-m: 1rem;
+    --space-l: 2rem;
+    --space-xl: 4rem;
+
+    --radius: 0.5rem;
+    --transition: 0.15s ease;
+  }
+
+  body {
+    font-size: var(--f-size);
+    font-family: var(--f-family-serif);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  p {
+    line-height: var(--lh-p);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    line-height: var(--lh-h);
+  }
+
+  details {
+    summary {
+    }
+  }
+
+  em {
+  }
+
+  blockquote {
+  }
+
+  figure {
+    figcaption {
+    }
+  }
+
+  mark {
+  }
+
+  dialog {
+  }
+
+  img,
+  video {
+    max-width: 100%;
+    display: block;
+  }
+
+  body > a[href^="#"] {
+    background: var(--c-dark);
+    color: var(--c-light);
+
+    position: absolute;
+    top: -100%;
+    left: 1rem;
+    z-index: 100;
+    padding: 1rem;
+
+    &:focus {
+      top: 1rem;
+    }
+  }
+}
+
+@layer components {
+  [data-nav-toggle] {
+    display: none;
+  }
+
+  @media (max-width: 768px) {
+    [data-nav-toggle] {
+      display: block;
+    }
+
+    [data-nav]:not(.is-open) {
+      display: none;
+    }
+  }
+
+  .btn {
+    &:hover {
+    }
+  }
+
+  form {
+    label {
+    }
+
+    input,
+    textarea,
+    select {
+      &:focus {
+      }
+    }
+
+    textarea {
+      resize: vertical;
+    }
+
+    fieldset {
+      legend {
+      }
+    }
+
+    [name="_gotcha"] {
+      display: none;
+    }
+  }
+
+  .is-succes {
+    color: hsl(var(--c-succes-h), var(--c-succes-s), 25%);
+    background: hsl(var(--c-succes-h), var(--c-succes-s), 93%);
+    border: 1px solid hsl(var(--c-succes-h), var(--c-succes-s), 70%);
+
+    border-radius: var(--radius);
+    padding: var(--space-m);
+  }
+
+  .is-waarschuwing {
+    color: hsl(var(--c-waarschuwing-h), var(--c-waarschuwing-s), 30%);
+    background: hsl(var(--c-waarschuwing-h), var(--c-waarschuwing-s), 93%);
+    border: 1px solid hsl(var(--c-waarschuwing-h), var(--c-waarschuwing-s), 65%);
+
+    border-radius: var(--radius);
+    padding: var(--space-m);
+  }
+
+  .is-fout {
+    color: hsl(var(--c-fout-h), var(--c-fout-s), 30%);
+    background: hsl(var(--c-fout-h), var(--c-fout-s), 94%);
+    border: 1px solid hsl(var(--c-fout-h), var(--c-fout-s), 70%);
+
+    border-radius: var(--radius);
+    padding: var(--space-m);
+  }
+}
+
+@layer utilities {
+  .h1-font {
+    font-size: var(--f-size-h1);
+  }
+
+  .h2-font {
+    font-size: var(--f-size-h2);
+  }
+
+  .h3-font {
+    font-size: var(--f-size-h3);
+  }
+
+  .h4-font {
+    font-size: var(--f-size-h4);
+  }
+
+  .h5-font {
+    font-size: var(--f-size-h5);
+  }
+
+  .h6-font {
+    font-size: var(--f-size-h6);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

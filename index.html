@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="nl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- ── Pas aan per project ── -->
+    <title>Paginatitel — Bedrijfsnaam</title>
+    <meta
+      name="description"
+      content="Beschrijving van de pagina (max 160 tekens)."
+    />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Paginatitel — Bedrijfsnaam" />
+    <meta
+      property="og:description"
+      content="Beschrijving voor sociale media."
+    />
+    <meta property="og:image" content="https://example.com/images/og.png" />
+    <meta property="og:url" content="https://example.com/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="nl_NL" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Paginatitel — Bedrijfsnaam" />
+    <meta
+      name="twitter:description"
+      content="Beschrijving voor sociale media."
+    />
+    <meta name="twitter:image" content="https://example.com/images/og.png" />
+
+    <!-- Canonical & hreflang -->
+    <link rel="canonical" href="https://example.com/" />
+    <link rel="alternate" hreflang="nl" href="https://example.com/" />
+    <link rel="alternate" hreflang="en" href="https://example.com/en" />
+    <link rel="alternate" hreflang="x-default" href="https://example.com/" />
+
+    <link rel="icon" href="images/favicon.png" />
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles/styleguide.css" />
+    <link rel="stylesheet" href="styles/style.css" />
+
+    <!-- JS class voor progressieve enhancemend -->
+    <script>
+      document.documentElement.classList.add("js");
+    </script>
+
+    <!-- Plausible analytics — vervang domein -->
+    <!-- <script async src="https://plausible.io/js/script.js" data-domain="example.com"></script> -->
+
+    <!-- Schema.org JSON-LD — pas aan per project -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "ProfessionalService",
+        "name": "Bedrijfsnaam",
+        "url": "https://example.com",
+        "logo": "https://example.com/images/logo.png",
+        "description": "Beschrijving van het bedrijf.",
+        "areaServed": {
+          "@type": "Country",
+          "name": "Nederland"
+        },
+        "address": {
+          "@type": "PostalAddress",
+          "addressCountry": "NL"
+        },
+        "sameAs": []
+      }
+    </script>
+  </head>
+  <body>
+    <a href="#main">Ga naar inhoud</a>
+
+    <header>
+      <button data-nav-toggle aria-expanded="false" aria-controls="main-nav">
+        Menu
+      </button>
+      <nav id="main-nav" data-nav>
+        <ul>
+          <li><a href="/">Home</a></li>
+          <li><a href="/over">Over</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section>asd</section>
+    </main>
+
+    <footer>BEDRIJFSNAAM © 2026</footer>
+
+    <script src="scripts/nav.js" defer></script>
+    <script src="scripts/main.js" defer></script>
+    <script src="scripts/form.js" defer></script>
+  </body>
+</html>
