@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="nl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Beheer — Momo's Rooster</title>
+    <link rel="icon" href="images/favicon.png" />
+    <link rel="stylesheet" href="styles/styleguide.css" />
+    <link rel="stylesheet" href="styles/style.css" />
+    <script>
+      document.documentElement.classList.add("js");
+    </script>
+  </head>
+  <body>
+    <div class="login-overlay" id="login-overlay" hidden>
+      <div class="login-box">
+        <h1 class="login-box__title">Momo's Rooster</h1>
+        <p class="login-box__sub">Inloggen vereist</p>
+        <form id="login-form" class="roster-form" novalidate>
+          <div class="form-group">
+            <label for="login-email">E-mailadres</label>
+            <input type="email" id="login-email" name="email" autocomplete="username" required />
+          </div>
+          <div class="form-group">
+            <label for="login-password">Wachtwoord</label>
+            <input type="password" id="login-password" name="password" autocomplete="current-password" required />
+          </div>
+          <button type="submit" class="btn btn--primary">Inloggen</button>
+          <p class="form-feedback form-feedback--error" id="login-error" aria-live="polite"></p>
+        </form>
+      </div>
+    </div>
+
+    <header class="site-header" id="site-header" hidden>
+      <a href="index.html" class="btn btn--ghost">← Rooster</a>
+      <span class="logo">Beheer</span>
+      <button class="btn btn--ghost" id="logout-btn">Uitloggen</button>
+    </header>
+
+    <main id="main" class="dashboard" hidden>
+      <section class="dashboard__form-wrap">
+        <h1>Dienst toevoegen</h1>
+
+        <form id="roster-form" class="roster-form" novalidate>
+          <div class="form-group">
+            <label for="date">Datum</label>
+            <input type="date" id="date" name="date" required />
+          </div>
+
+          <div class="form-group">
+            <label for="name">Naam medewerker</label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              placeholder="Bijv. Jimmy james"
+              required
+              autocomplete="off"
+            />
+          </div>
+
+          <div class="form-group form-group--row">
+            <div>
+              <label for="start">Begintijd</label>
+              <input type="time" id="start" name="start" required />
+            </div>
+            <div>
+              <label for="end">Eindtijd</label>
+              <input type="time" id="end" name="end" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Afdeling</label>
+            <div class="radio-group">
+              <label class="radio-label">
+                <input type="radio" name="afdeling" value="bediening" checked />
+                Bediening
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="afdeling" value="keuken" />
+                Keuken
+              </label>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn--primary">Toevoegen</button>
+          <p class="form-feedback" id="form-feedback" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="dashboard__form-wrap">
+        <h2>Evenement toevoegen</h2>
+        <form id="event-form" class="roster-form" novalidate>
+          <div class="form-group">
+            <label for="event-date">Datum</label>
+            <input type="date" id="event-date" name="event-date" required />
+          </div>
+          <div class="form-group">
+            <label for="event-title">Titel</label>
+            <input type="text" id="event-title" name="event-title" placeholder="Bijv. Personeelsfeest" required autocomplete="off" />
+          </div>
+          <div class="form-group">
+            <label for="event-desc">Omschrijving <span style="font-weight:400;text-transform:none">(optioneel)</span></label>
+            <textarea id="event-desc" name="event-desc" rows="3" placeholder="Extra info…"></textarea>
+          </div>
+          <button type="submit" class="btn btn--primary">Toevoegen</button>
+          <p class="form-feedback" id="event-feedback" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="dashboard__form-wrap">
+        <h2>Aankomende evenementen</h2>
+        <ul class="events-list events-list--manage" id="dashboard-events-list"></ul>
+      </section>
+
+      <section class="dashboard__mine">
+        <h2>Mijn rooster</h2>
+        <div class="form-group">
+          <label for="my-name">Jouw naam</label>
+          <input type="text" id="my-name" placeholder="Bijv. Lisa" autocomplete="off" />
+        </div>
+        <ul class="my-shifts" id="my-shifts"></ul>
+      </section>
+
+      <section class="dashboard__overview">
+        <h2>Geplande diensten</h2>
+
+        <div class="overview-nav">
+          <button class="btn btn--icon" id="prev-week" aria-label="Vorige week">
+            &#8592;
+          </button>
+          <span id="week-label" class="week-label"></span>
+          <button
+            class="btn btn--icon"
+            id="next-week"
+            aria-label="Volgende week"
+          >
+            &#8594;
+          </button>
+        </div>
+
+        <div class="week-grid" id="week-grid"></div>
+      </section>
+    </main>
+
+    <script type="module" src="scripts/dashboard.js"></script>
+  </body>
+</html>

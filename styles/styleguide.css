@@ -26,9 +26,10 @@
     --f-size-h5: clamp();
     --f-size-h6: clamp();
 
-    --c-primary: ;
-    --c-secondary: ;
-    --c-tertiary: ;
+    --c-primary: #eae0cf;
+    --c-secondary: #7288ae;
+    --c-tertiary: #4b5694;
+    --c-darkblue: #111844;
 
     --c-succes-h: 142;
     --c-succes-s: 60%;
@@ -60,7 +61,9 @@
   body {
     font-size: var(--f-size);
     font-family: var(--f-family-serif);
+    background-color: var(--c-darkblue);
     -webkit-font-smoothing: antialiased;
+    color: var(--c-light);
   }
 
   p {
