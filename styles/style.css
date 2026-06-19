@@ -103,7 +103,6 @@ body {
   border-radius: var(--radius);
 
   svg {
-
   }
 }
 
@@ -543,22 +542,48 @@ body {
   line-height: 1;
   color: #111844;
   cursor: pointer;
-  transition: background .15s, border-color .15s;
+  transition: background 0.15s, border-color 0.15s;
   padding: 0;
 }
 .dash-nav-btn:hover {
   background: #e6e3da;
   border-color: #d4d0c6;
 }
+.dash-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+  pointer-events: none;
+}
 
 .week-grid {
   overflow-x: auto;
 }
 
+/* ── Evenementen in roostergrid ── */
+.dash-event {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 8px;
+  padding: 4px 6px;
+  background: #fff8e7;
+  border-left: 3px solid #e8a020;
+  border-radius: 4px;
+}
+.dash-event__title {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #8a5a00;
+}
+.dash-event__desc {
+  font-size: 9.5px;
+  color: #b07a30;
+}
+
 /* ── Dashboard rooster grid ── */
 .dash-roster {
   display: flex;
-  font-family: system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  font-family: system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
 }
 
 .dash-day {
@@ -568,7 +593,9 @@ body {
   flex-direction: column;
   border-right: 1px solid #e6e3da;
 }
-.dash-day:last-child { border-right: none; }
+.dash-day:last-child {
+  border-right: none;
+}
 
 .dash-day-head {
   padding: 8px 10px;
@@ -584,7 +611,7 @@ body {
   font-size: 11px;
   color: #111844;
   text-transform: uppercase;
-  letter-spacing: .05em;
+  letter-spacing: 0.05em;
 }
 
 .dash-day-date {
@@ -603,7 +630,7 @@ body {
   font-weight: 700;
   color: #111844;
   text-transform: uppercase;
-  letter-spacing: .06em;
+  letter-spacing: 0.06em;
 }
 
 .dash-sec-dot {
@@ -614,23 +641,28 @@ body {
 }
 
 .dash-cell {
-  flex: 1;
-  min-height: 80px;
-  padding: 5px;
+  min-height: 120px;
+  padding: 6px 6px 10px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 5px;
   border-bottom: 1px solid #eeece4;
   background: #fff;
   cursor: pointer;
-  transition: background .1s;
+  transition: background 0.1s;
 }
-.dash-cell:last-child { border-bottom: none; }
-.dash-cell:hover { background: #fafaf8; }
+.dash-cell:last-child {
+  border-bottom: none;
+}
+.dash-cell:hover {
+  background: #fafaf8;
+}
 
 /* ── Mobile: verticale dagen ── */
 @media (max-width: 640px) {
-  .week-grid { overflow-x: visible; }
+  .week-grid {
+    overflow-x: visible;
+  }
 
   .dash-roster {
     flex-direction: column;
@@ -641,7 +673,9 @@ body {
     border-right: none;
     border-bottom: 2px solid #e6e3da;
   }
-  .dash-day:last-child { border-bottom: none; }
+  .dash-day:last-child {
+    border-bottom: none;
+  }
 
   .dash-day-head {
     flex-direction: row;
@@ -650,12 +684,22 @@ body {
     padding: 10px 12px;
   }
 
-  .dash-day-label { font-size: 13px; }
-  .dash-day-date  { font-size: 12px; }
+  .dash-day-label {
+    font-size: 13px;
+  }
+  .dash-day-date {
+    font-size: 12px;
+  }
 
-  .dash-sec-bar { padding: 5px 12px; font-size: 10px; }
+  .dash-sec-bar {
+    padding: 5px 12px;
+    font-size: 10px;
+  }
 
-  .dash-cell { min-height: 44px; padding: 6px 8px; }
+  .dash-cell {
+    min-height: 44px;
+    padding: 6px 8px;
+  }
 }
 
 .dash-cell__add {
@@ -671,7 +715,7 @@ body {
   width: 100%;
   padding: 3px 0;
   cursor: pointer;
-  transition: border-color .12s, color .12s, background .12s;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
 }
 .dash-cell__add:hover {
   border-color: #7288ae;
@@ -694,7 +738,7 @@ body {
   border-radius: 5px;
   background: #fff;
   border-left: 3px solid #7288ae;
-  box-shadow: 0 1px 2px rgba(17,24,68,.07);
+  box-shadow: 0 1px 2px rgba(17, 24, 68, 0.07);
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -725,19 +769,21 @@ body {
   padding: 0 2px;
   border-radius: 3px;
   opacity: 0;
-  transition: opacity .12s, color .12s, background .12s;
+  transition: opacity 0.12s, color 0.12s, background 0.12s;
 }
-.dash-shift:hover .dash-shift__remove { opacity: 1; }
+.dash-shift:hover .dash-shift__remove {
+  opacity: 1;
+}
 .dash-shift__remove:hover {
-  color: hsl(0,65%,45%);
-  background: hsl(0,65%,95%);
+  color: hsl(0, 65%, 45%);
+  background: hsl(0, 65%, 95%);
 }
 
 /* ── Dashboard dienst-modal ── */
 .wr-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,.35);
+  background: rgba(0, 0, 0, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -747,10 +793,10 @@ body {
 .wr-modal {
   background: #fff;
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   width: 300px;
   overflow: hidden;
-  font-family: system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  font-family: system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
 }
 
 .wr-modal__header {
@@ -792,7 +838,7 @@ body {
   font-weight: 700;
   color: #7288ae;
   text-transform: uppercase;
-  letter-spacing: .05em;
+  letter-spacing: 0.05em;
   width: 40px;
   flex: none;
 }
@@ -805,7 +851,7 @@ body {
   font: inherit;
   font-size: 14px;
   color: #111844;
-  transition: border-color .15s;
+  transition: border-color 0.15s;
 }
 
 .wr-modal__input:focus {
@@ -829,7 +875,7 @@ body {
 
 .wr-modal__error {
   font-size: 11.5px;
-  color: hsl(0,65%,45%);
+  color: hsl(0, 65%, 45%);
   min-height: 1em;
 }
 
@@ -843,19 +889,19 @@ body {
 
 .wr-modal__delete {
   background: transparent;
-  border: 1.5px solid hsl(0,60%,80%);
+  border: 1.5px solid hsl(0, 60%, 80%);
   border-radius: 7px;
   padding: 7px 14px;
   font: inherit;
   font-size: 13px;
-  color: hsl(0,65%,45%);
+  color: hsl(0, 65%, 45%);
   cursor: pointer;
-  transition: background .15s, border-color .15s;
+  transition: background 0.15s, border-color 0.15s;
   margin-right: auto;
 }
 .wr-modal__delete:hover {
-  background: hsl(0,65%,96%);
-  border-color: hsl(0,65%,65%);
+  background: hsl(0, 65%, 96%);
+  border-color: hsl(0, 65%, 65%);
 }
 
 .wr-modal__cancel {
@@ -867,9 +913,11 @@ body {
   font-size: 13px;
   color: #555;
   cursor: pointer;
-  transition: background .15s;
+  transition: background 0.15s;
 }
-.wr-modal__cancel:hover { background: #f5f5f5; }
+.wr-modal__cancel:hover {
+  background: #f5f5f5;
+}
 
 .wr-modal__save {
   background: #111844;
@@ -881,10 +929,15 @@ body {
   font-weight: 600;
   color: #fff;
   cursor: pointer;
-  transition: background .15s;
+  transition: background 0.15s;
 }
-.wr-modal__save:hover { background: #4b5694; }
-.wr-modal__save:disabled { opacity: .6; cursor: not-allowed; }
+.wr-modal__save:hover {
+  background: #4b5694;
+}
+.wr-modal__save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 /* ── Chips ── */
 .chip {

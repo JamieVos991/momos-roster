@@ -1,6 +1,7 @@
 import { db, auth } from "./firebase.js";
 import {
-  doc, getDoc, setDoc, updateDoc, arrayUnion
+  doc, getDoc, setDoc, updateDoc, arrayUnion,
+  collection, query, where, orderBy, getDocs
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 import {
   signInWithEmailAndPassword, signOut, onAuthStateChanged
@@ -128,7 +129,28 @@ async function loadWeek() {
     d.setDate(monday.getDate() + i);
     return d;
   });
-  const snaps = await Promise.all(dates.map(d => getDoc(doc(db, 'rooster', toDateKey(d)))));
+  const mondayKey = toDateKey(monday);
+  const sundayKey = toDateKey(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6));
+
+  const [snaps, eventsSnap] = await Promise.all([
+    Promise.all(dates.map(d => getDoc(doc(db, 'rooster', toDateKey(d))))),
+    getDocs(query(
+      collection(db, 'evenementen'),
+      where('datum', '>=', mondayKey),
+      where('datum', '<=', sundayKey),
+      orderBy('datum')
+    )),
+  ]);
+
+  const eventsByDate = {};
+  eventsSnap.forEach(s => {
+    const { datum, titel, beschrijving } = s.data();
+    if (!eventsByDate[datum]) eventsByDate[datum] = [];
+    eventsByDate[datum].push({ titel, beschrijving });
+  });
+
+  const toLocalKey = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
   const roster = dates.map((d, i) => ({
     i,
     label: DAY_NAMES[i],
@@ -136,6 +158,7 @@ async function loadWeek() {
     month: MONTHS[d.getMonth()],
     key: toDateKey(d),
     data: snaps[i].exists() ? snaps[i].data() : {},
+    events: eventsByDate[toLocalKey(d)] || [],
   }));
 
   renderRosterGrid(roster);
@@ -154,6 +177,13 @@ function renderRosterGrid(roster) {
     head.className = 'dash-day-head';
     head.innerHTML = `<span class="dash-day-label">${d.label}</span><span class="dash-day-date">${d.date} ${d.month}</span>`;
     dayEl.appendChild(head);
+
+    for (const ev of d.events) {
+      const evEl = document.createElement('div');
+      evEl.className = 'dash-event';
+      evEl.innerHTML = `<span class="dash-event__title">${ev.titel}</span>${ev.beschrijving ? `<span class="dash-event__desc">${ev.beschrijving}</span>` : ''}`;
+      dayEl.appendChild(evEl);
+    }
 
     for (const secKey of SECTION_ORDER) {
       const sec = SECTIONS[secKey];
@@ -252,14 +282,12 @@ function openAddShiftModal(day, secKey) {
         <p class="wr-modal__error" id="wr-modal-error"></p>
       </div>
       <div class="wr-modal__footer">
-        <button class="wr-modal__cancel">Annuleren</button>
         <button class="wr-modal__save">Opslaan</button>
       </div>
     </div>
   `;
 
   const cancel = () => overlay.remove();
-  overlay.querySelector('.wr-modal__cancel').addEventListener('click', cancel);
   overlay.addEventListener('click', e => { if (e.target === overlay) cancel(); });
   document.addEventListener('keydown', function esc(e) {
     if (e.key === 'Escape') { cancel(); document.removeEventListener('keydown', esc); }
@@ -346,14 +374,12 @@ function openEditShiftModal(d, secKey, entry) {
       </div>
       <div class="wr-modal__footer">
         <button class="wr-modal__delete">Verwijderen</button>
-        <button class="wr-modal__cancel">Annuleren</button>
         <button class="wr-modal__save">Opslaan</button>
       </div>
     </div>
   `;
 
   const cancel = () => overlay.remove();
-  overlay.querySelector('.wr-modal__cancel').addEventListener('click', cancel);
   overlay.addEventListener('click', e => { if (e.target === overlay) cancel(); });
   document.addEventListener('keydown', function esc(e) {
     if (e.key === 'Escape') { cancel(); document.removeEventListener('keydown', esc); }
