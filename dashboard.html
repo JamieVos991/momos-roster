@@ -7,6 +7,7 @@
     <link rel="icon" href="images/favicon.png" />
     <link rel="stylesheet" href="styles/styleguide.css" />
     <link rel="stylesheet" href="styles/style.css" />
+    <link rel="stylesheet" href="styles/weekrooster.css" />
     <script>
       document.documentElement.classList.add("js");
     </script>
@@ -34,59 +35,22 @@
     <header class="site-header" id="site-header" hidden>
       <a href="index.html" class="btn btn--ghost">← Rooster</a>
       <span class="logo">Beheer</span>
+      <a href="weekrooster.html" class="btn btn--ghost">Weekrooster</a>
       <button class="btn btn--ghost" id="logout-btn">Uitloggen</button>
     </header>
 
     <main id="main" class="dashboard" hidden>
-      <section class="dashboard__form-wrap">
-        <h1>Dienst toevoegen</h1>
 
-        <form id="roster-form" class="roster-form" novalidate>
-          <div class="form-group">
-            <label for="date">Datum</label>
-            <input type="date" id="date" name="date" required />
+      <section class="dashboard__overview">
+        <div class="dashboard__overview-header">
+          <h2>Geplande diensten</h2>
+          <div class="overview-nav">
+            <button class="dash-nav-btn" id="prev-week" aria-label="Vorige week">&#8249;</button>
+            <span id="week-label" class="week-label"></span>
+            <button class="dash-nav-btn" id="next-week" aria-label="Volgende week">&#8250;</button>
           </div>
-
-          <div class="form-group">
-            <label for="name">Naam medewerker</label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              placeholder="Bijv. Jimmy james"
-              required
-              autocomplete="off"
-            />
-          </div>
-
-          <div class="form-group form-group--row">
-            <div>
-              <label for="start">Begintijd</label>
-              <input type="time" id="start" name="start" required />
-            </div>
-            <div>
-              <label for="end">Eindtijd</label>
-              <input type="time" id="end" name="end" required />
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Afdeling</label>
-            <div class="radio-group">
-              <label class="radio-label">
-                <input type="radio" name="afdeling" value="bediening" checked />
-                Bediening
-              </label>
-              <label class="radio-label">
-                <input type="radio" name="afdeling" value="keuken" />
-                Keuken
-              </label>
-            </div>
-          </div>
-
-          <button type="submit" class="btn btn--primary">Toevoegen</button>
-          <p class="form-feedback" id="form-feedback" aria-live="polite"></p>
-        </form>
+        </div>
+        <div class="week-grid" id="week-grid"></div>
       </section>
 
       <section class="dashboard__form-wrap">
@@ -123,25 +87,6 @@
         <ul class="my-shifts" id="my-shifts"></ul>
       </section>
 
-      <section class="dashboard__overview">
-        <h2>Geplande diensten</h2>
-
-        <div class="overview-nav">
-          <button class="btn btn--icon" id="prev-week" aria-label="Vorige week">
-            &#8592;
-          </button>
-          <span id="week-label" class="week-label"></span>
-          <button
-            class="btn btn--icon"
-            id="next-week"
-            aria-label="Volgende week"
-          >
-            &#8594;
-          </button>
-        </div>
-
-        <div class="week-grid" id="week-grid"></div>
-      </section>
     </main>
 
     <script type="module" src="scripts/dashboard.js"></script>

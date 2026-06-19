@@ -1,11 +1,42 @@
 import { db, auth } from "./firebase.js";
 import {
-  doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove
+  doc, getDoc, setDoc, updateDoc, arrayUnion
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 import {
   signInWithEmailAndPassword, signOut, onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 import { loadUpcomingEvents, addEvent } from "./events.js";
+
+// ── Rooster constants ──────────────────────────────────────────────────────
+
+const SECTIONS = {
+  bediening: { label: 'Bediening', color: '#7288ae' },
+  keuken:    { label: 'Keuken',    color: '#4b5694' },
+};
+const SECTION_ORDER = ['bediening', 'keuken'];
+const EMPLOYEES = [
+  { id: 'sanne',  name: 'Sanne',  section: 'bediening', rate: 16 },
+  { id: 'daan',   name: 'Daan',   section: 'bediening', rate: 14.5 },
+  { id: 'lotte',  name: 'Lotte',  section: 'bediening', rate: 15 },
+  { id: 'sophie', name: 'Sophie', section: 'bediening', rate: 14 },
+  { id: 'marco',  name: 'Marco',  section: 'keuken',    rate: 22, badge: 'Chef' },
+  { id: 'emma',   name: 'Emma',   section: 'keuken',    rate: 17 },
+  { id: 'noa',    name: 'Noa',    section: 'keuken',    rate: 16.5 },
+];
+const UNAVAIL = new Set(['lotte-2', 'emma-5', 'sophie-6']);
+const DAY_NAMES = ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'];
+
+function shiftHrs(start, end) {
+  const [ah, am] = start.split(':').map(Number);
+  const [bh, bm] = end.split(':').map(Number);
+  return (bh * 60 + bm - (ah * 60 + am)) / 60;
+}
+function fmtH(h) {
+  const r = Math.round(h * 10) / 10;
+  return (Number.isInteger(r) ? r : String(r).replace('.', ',')) + ' u';
+}
+function money(n) { return '€' + Math.round(n).toLocaleString('nl-NL'); }
+function tint(hex) { return hex + '24'; }
 
 const loginOverlay = document.getElementById("login-overlay");
 const siteHeader = document.getElementById("site-header");
@@ -46,8 +77,6 @@ function initDashboard() {
   if (dashboardInitialized) return;
   dashboardInitialized = true;
 
-const form = document.getElementById("roster-form");
-const feedback = document.getElementById("form-feedback");
 const weekGrid = document.getElementById("week-grid");
 const weekLabel = document.getElementById("week-label");
 const prevWeekBtn = document.getElementById("prev-week");
@@ -55,11 +84,8 @@ const myNameInput = document.getElementById("my-name");
 const myShiftsList = document.getElementById("my-shifts");
 const nextWeekBtn = document.getElementById("next-week");
 
-const DAYS = ["zo", "ma", "di", "wo", "do", "vr", "za"];
 const MONTHS = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
-
-// Set default date to today
-document.getElementById("date").valueAsDate = new Date();
+const DAYS_SHORT = ["zo", "ma", "di", "wo", "do", "vr", "za"];
 
 let weekOffset = 0;
 
@@ -76,7 +102,16 @@ function toDateKey(date) {
 }
 
 function formatShort(date) {
-  return `${DAYS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}`;
+  return `${DAYS_SHORT[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}`;
+}
+
+function weekKey(offset = 0) {
+  const mon = getMonday(offset);
+  const tmp = new Date(Date.UTC(mon.getFullYear(), mon.getMonth(), mon.getDate()));
+  tmp.setUTCDate(tmp.getUTCDate() + 4 - (tmp.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+  const wn = Math.ceil((((tmp - yearStart) / 86400000) + 1) / 7);
+  return `${mon.getFullYear()}-W${String(wn).padStart(2, '0')}`;
 }
 
 async function loadWeek() {
@@ -84,104 +119,300 @@ async function loadWeek() {
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
   weekLabel.textContent = `${monday.getDate()} ${MONTHS[monday.getMonth()]} – ${sunday.getDate()} ${MONTHS[sunday.getMonth()]}`;
+  prevWeekBtn.disabled = weekOffset === 0;
 
-  weekGrid.innerHTML = "";
+  weekGrid.innerHTML = '<p style="padding:1.5rem;color:#aaa;font-style:italic">Laden…</p>';
 
-  const days = Array.from({ length: 7 }, (_, i) => {
+  const dates = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
     return d;
   });
+  const snaps = await Promise.all(dates.map(d => getDoc(doc(db, 'rooster', toDateKey(d)))));
+  const roster = dates.map((d, i) => ({
+    i,
+    label: DAY_NAMES[i],
+    date: d.getDate(),
+    month: MONTHS[d.getMonth()],
+    key: toDateKey(d),
+    data: snaps[i].exists() ? snaps[i].data() : {},
+  }));
 
-  const snaps = await Promise.all(days.map(d => getDoc(doc(db, "rooster", toDateKey(d)))));
-
-  days.forEach((date, i) => {
-    const data = snaps[i].exists() ? snaps[i].data() : {};
-    const key = toDateKey(date);
-
-    const col = document.createElement("div");
-    col.className = "week-col";
-
-    const heading = document.createElement("h3");
-    heading.className = "week-col__heading";
-    heading.textContent = formatShort(date);
-    col.appendChild(heading);
-
-    ["bediening", "keuken"].forEach(afd => {
-      const section = document.createElement("div");
-      section.className = "week-col__section";
-
-      const label = document.createElement("p");
-      label.className = "week-col__label";
-      label.textContent = afd.charAt(0).toUpperCase() + afd.slice(1);
-      section.appendChild(label);
-
-      const entries = data[afd] || [];
-      entries.forEach(entry => {
-        const chip = document.createElement("span");
-        chip.className = "chip";
-
-        const nameSpan = document.createElement("span");
-        nameSpan.textContent = `${entry.name} ${entry.start}–${entry.end}`;
-
-        const removeBtn = document.createElement("button");
-        removeBtn.className = "chip__remove";
-        removeBtn.setAttribute("aria-label", `${entry.name} verwijderen`);
-        removeBtn.textContent = "×";
-        removeBtn.addEventListener("click", () => removeEntry(key, afd, entry));
-
-        chip.appendChild(nameSpan);
-        chip.appendChild(removeBtn);
-        section.appendChild(chip);
-      });
-
-      col.appendChild(section);
-    });
-
-    weekGrid.appendChild(col);
-  });
+  renderRosterGrid(roster);
 }
 
-async function removeEntry(dateKey, afdeling, entry) {
-  const ref = doc(db, "rooster", dateKey);
-  await updateDoc(ref, { [afdeling]: arrayRemove(entry) });
-  loadWeek();
-}
+function renderRosterGrid(roster) {
+  weekGrid.innerHTML = '';
+  weekGrid.className = 'dash-roster';
+  const isTouch = window.matchMedia('(hover: none)').matches;
 
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  feedback.textContent = "";
+  for (const d of roster) {
+    const dayEl = document.createElement('div');
+    dayEl.className = 'dash-day';
 
-  const date = new Date(form.date.value + "T00:00:00");
-  const name = form.name.value.trim();
-  const afdeling = form.afdeling.value;
-  const start = form.start.value;
-  const end = form.end.value;
+    const head = document.createElement('div');
+    head.className = 'dash-day-head';
+    head.innerHTML = `<span class="dash-day-label">${d.label}</span><span class="dash-day-date">${d.date} ${d.month}</span>`;
+    dayEl.appendChild(head);
 
-  if (!name || !start || !end) {
-    feedback.textContent = "Vul naam en tijden in.";
-    return;
+    for (const secKey of SECTION_ORDER) {
+      const sec = SECTIONS[secKey];
+      const entries = d.data[secKey] || [];
+
+      const secBar = document.createElement('div');
+      secBar.className = 'dash-sec-bar';
+      secBar.innerHTML = `<span class="dash-sec-dot" style="background:${sec.color}"></span>${sec.label}`;
+      dayEl.appendChild(secBar);
+
+      const cell = document.createElement('div');
+      cell.className = 'dash-cell';
+
+      for (const entry of entries) {
+        const card = document.createElement('div');
+        card.className = 'dash-shift';
+        card.style.borderLeftColor = sec.color;
+        card.innerHTML = `
+          <span class="dash-shift__time">${entry.start}–${entry.end}</span>
+          <span class="dash-shift__name">${entry.name}</span>
+        `;
+        card.addEventListener(isTouch ? 'click' : 'dblclick', e => {
+          e.stopPropagation();
+          openEditShiftModal(d, secKey, entry);
+        });
+        cell.appendChild(card);
+      }
+
+      const addBtn = document.createElement('button');
+      addBtn.className = 'dash-cell__add';
+      addBtn.textContent = '+';
+      addBtn.title = 'Dienst toevoegen';
+      addBtn.addEventListener('click', e => { e.stopPropagation(); openAddShiftModal(d, secKey); });
+      cell.appendChild(addBtn);
+
+      if (!isTouch) cell.addEventListener('dblclick', () => openAddShiftModal(d, secKey));
+
+      dayEl.appendChild(cell);
+    }
+
+    weekGrid.appendChild(dayEl);
   }
+}
 
-  const entry = { name, start, end };
-  const key = toDateKey(date);
-  const ref = doc(db, "rooster", key);
+async function removeShift(dayKey, secKey, entry) {
+  const ref = doc(db, 'rooster', dayKey);
   const snap = await getDoc(ref);
-
-  if (snap.exists()) {
-    await updateDoc(ref, { [afdeling]: arrayUnion(entry) });
-  } else {
-    await setDoc(ref, { [afdeling]: [entry] });
-  }
-
-  feedback.textContent = `✓ ${name} (${start}–${end}) toegevoegd aan ${afdeling}.`;
-  form.name.value = "";
-  form.start.value = "";
-  form.end.value = "";
+  if (!snap.exists()) return;
+  const updated = (snap.data()[secKey] || []).filter(
+    e => !(e.name === entry.name && e.start === entry.start && e.end === entry.end)
+  );
+  await updateDoc(ref, { [secKey]: updated });
   loadWeek();
-});
+}
 
-prevWeekBtn.addEventListener("click", () => { weekOffset--; loadWeek(); });
+function openAddShiftModal(day, secKey) {
+  document.getElementById('wr-add-modal')?.remove();
+
+  const empOptions = EMPLOYEES.map(e => `<option value="${e.name}">`).join('');
+
+  const overlay = document.createElement('div');
+  overlay.id = 'wr-add-modal';
+  overlay.className = 'wr-modal-overlay';
+  overlay.innerHTML = `
+    <div class="wr-modal">
+      <div class="wr-modal__header">
+        <div class="wr-modal__title">Dienst toevoegen</div>
+        <div class="wr-modal__sub">${day.label} ${day.date} ${day.month}</div>
+      </div>
+      <div class="wr-modal__body">
+        <div class="wr-modal__row">
+          <label class="wr-modal__label">Naam</label>
+          <input class="wr-modal__input" id="wr-modal-name" type="text" value=""
+            list="wr-emp-list" autocomplete="off" placeholder="Naam medewerker" />
+          <datalist id="wr-emp-list">${empOptions}</datalist>
+        </div>
+        <div class="wr-modal__row">
+          <label class="wr-modal__label">Functie</label>
+          <div class="wr-modal__radios">
+            <label class="wr-modal__radio">
+              <input type="radio" name="wr-functie" value="bediening" ${secKey === 'bediening' ? 'checked' : ''}> Bediening
+            </label>
+            <label class="wr-modal__radio">
+              <input type="radio" name="wr-functie" value="keuken" ${secKey === 'keuken' ? 'checked' : ''}> Keuken
+            </label>
+          </div>
+        </div>
+        <div class="wr-modal__row">
+          <label class="wr-modal__label">Begin</label>
+          <input class="wr-modal__input" id="wr-modal-start" type="time" value="16:00" />
+        </div>
+        <div class="wr-modal__row">
+          <label class="wr-modal__label">Einde</label>
+          <input class="wr-modal__input" id="wr-modal-end" type="time" value="23:00" />
+        </div>
+        <p class="wr-modal__error" id="wr-modal-error"></p>
+      </div>
+      <div class="wr-modal__footer">
+        <button class="wr-modal__cancel">Annuleren</button>
+        <button class="wr-modal__save">Opslaan</button>
+      </div>
+    </div>
+  `;
+
+  const cancel = () => overlay.remove();
+  overlay.querySelector('.wr-modal__cancel').addEventListener('click', cancel);
+  overlay.addEventListener('click', e => { if (e.target === overlay) cancel(); });
+  document.addEventListener('keydown', function esc(e) {
+    if (e.key === 'Escape') { cancel(); document.removeEventListener('keydown', esc); }
+  });
+
+  overlay.querySelector('.wr-modal__save').addEventListener('click', async () => {
+    const name    = document.getElementById('wr-modal-name').value.trim();
+    const functie = overlay.querySelector('input[name="wr-functie"]:checked')?.value;
+    const start   = document.getElementById('wr-modal-start').value;
+    const end     = document.getElementById('wr-modal-end').value;
+    const errEl   = document.getElementById('wr-modal-error');
+
+    if (!name) { errEl.textContent = 'Vul een naam in.'; return; }
+    if (!start || !end || start >= end) { errEl.textContent = 'Vul een geldige begin- en eindtijd in.'; return; }
+
+    const saveBtn = overlay.querySelector('.wr-modal__save');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Opslaan…';
+
+    try {
+      const entry = { name, start, end };
+      const ref = doc(db, 'rooster', day.key);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        await updateDoc(ref, { [functie]: arrayUnion(entry) });
+      } else {
+        await setDoc(ref, { [functie]: [entry] });
+      }
+      overlay.remove();
+      loadWeek();
+    } catch {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Opslaan';
+      document.getElementById('wr-modal-error').textContent = 'Opslaan mislukt. Probeer opnieuw.';
+    }
+  });
+
+  document.body.appendChild(overlay);
+  document.getElementById('wr-modal-name').focus();
+}
+
+function openEditShiftModal(d, secKey, entry) {
+  document.getElementById('wr-add-modal')?.remove();
+
+  const empOptions = EMPLOYEES.map(e => `<option value="${e.name}">`).join('');
+  const sec = SECTIONS[secKey];
+
+  const overlay = document.createElement('div');
+  overlay.id = 'wr-add-modal';
+  overlay.className = 'wr-modal-overlay';
+  overlay.innerHTML = `
+    <div class="wr-modal">
+      <div class="wr-modal__header">
+        <div class="wr-modal__title">Dienst bewerken</div>
+        <div class="wr-modal__sub">${d.label} ${d.date} ${d.month}</div>
+      </div>
+      <div class="wr-modal__body">
+        <div class="wr-modal__row">
+          <label class="wr-modal__label">Naam</label>
+          <input class="wr-modal__input" id="wr-modal-name" type="text" value="${entry.name}"
+            list="wr-emp-list" autocomplete="off" />
+          <datalist id="wr-emp-list">${empOptions}</datalist>
+        </div>
+        <div class="wr-modal__row">
+          <label class="wr-modal__label">Functie</label>
+          <div class="wr-modal__radios">
+            <label class="wr-modal__radio">
+              <input type="radio" name="wr-functie" value="bediening" ${secKey === 'bediening' ? 'checked' : ''}> Bediening
+            </label>
+            <label class="wr-modal__radio">
+              <input type="radio" name="wr-functie" value="keuken" ${secKey === 'keuken' ? 'checked' : ''}> Keuken
+            </label>
+          </div>
+        </div>
+        <div class="wr-modal__row">
+          <label class="wr-modal__label">Begin</label>
+          <input class="wr-modal__input" id="wr-modal-start" type="time" value="${entry.start}" />
+        </div>
+        <div class="wr-modal__row">
+          <label class="wr-modal__label">Einde</label>
+          <input class="wr-modal__input" id="wr-modal-end" type="time" value="${entry.end}" />
+        </div>
+        <p class="wr-modal__error" id="wr-modal-error"></p>
+      </div>
+      <div class="wr-modal__footer">
+        <button class="wr-modal__delete">Verwijderen</button>
+        <button class="wr-modal__cancel">Annuleren</button>
+        <button class="wr-modal__save">Opslaan</button>
+      </div>
+    </div>
+  `;
+
+  const cancel = () => overlay.remove();
+  overlay.querySelector('.wr-modal__cancel').addEventListener('click', cancel);
+  overlay.addEventListener('click', e => { if (e.target === overlay) cancel(); });
+  document.addEventListener('keydown', function esc(e) {
+    if (e.key === 'Escape') { cancel(); document.removeEventListener('keydown', esc); }
+  });
+
+  overlay.querySelector('.wr-modal__delete').addEventListener('click', async () => {
+    await removeShift(d.key, secKey, entry);
+    overlay.remove();
+  });
+
+  overlay.querySelector('.wr-modal__save').addEventListener('click', async () => {
+    const name    = document.getElementById('wr-modal-name').value.trim();
+    const functie = overlay.querySelector('input[name="wr-functie"]:checked')?.value;
+    const start   = document.getElementById('wr-modal-start').value;
+    const end     = document.getElementById('wr-modal-end').value;
+    const errEl   = document.getElementById('wr-modal-error');
+
+    if (!name) { errEl.textContent = 'Vul een naam in.'; return; }
+    if (!start || !end || start >= end) { errEl.textContent = 'Vul een geldige begin- en eindtijd in.'; return; }
+
+    const saveBtn = overlay.querySelector('.wr-modal__save');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Opslaan…';
+
+    try {
+      const ref = doc(db, 'rooster', d.key);
+      const snap = await getDoc(ref);
+      const existing = snap.exists() ? (snap.data()[secKey] || []) : [];
+      // Replace old entry; if section changed, remove from old and add to new
+      const newFunctie = functie || secKey;
+      if (newFunctie === secKey) {
+        const updated = existing.map(e =>
+          (e.name === entry.name && e.start === entry.start && e.end === entry.end)
+            ? { name, start, end }
+            : e
+        );
+        await updateDoc(ref, { [secKey]: updated });
+      } else {
+        // Moving to different section
+        const fromUpdated = existing.filter(e =>
+          !(e.name === entry.name && e.start === entry.start && e.end === entry.end)
+        );
+        const toExisting = snap.exists() ? (snap.data()[newFunctie] || []) : [];
+        await updateDoc(ref, { [secKey]: fromUpdated, [newFunctie]: [...toExisting, { name, start, end }] });
+      }
+      overlay.remove();
+      loadWeek();
+    } catch {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Opslaan';
+      document.getElementById('wr-modal-error').textContent = 'Opslaan mislukt. Probeer opnieuw.';
+    }
+  });
+
+  document.body.appendChild(overlay);
+  document.getElementById('wr-modal-name').focus();
+}
+
+prevWeekBtn.addEventListener("click", () => { if (weekOffset > 0) { weekOffset--; loadWeek(); } });
 nextWeekBtn.addEventListener("click", () => { weekOffset++; loadWeek(); });
 
 // ── Evenementen ──
