@@ -1,5 +1,5 @@
 import { db } from "./firebase.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+import { doc, getDoc, collection, query, where, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 import { loadUpcomingEvents } from "./events.js";
 
 const dayTitle = document.getElementById("day-title");
@@ -153,3 +153,129 @@ myNameInput.addEventListener("input", () => {
   if (q.length < 2) { myShiftsList.innerHTML = ""; return; }
   searchTimer = setTimeout(() => searchMyShifts(q), 300);
 });
+
+// ── Publiek weekoverzicht ──────────────────────────────────────────────────
+
+const DAY_NAMES = ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'];
+const SECTIONS = {
+  bediening: { label: 'Bediening', color: '#7288ae' },
+  keuken:    { label: 'Keuken',    color: '#4b5694' },
+};
+const SECTION_ORDER = ['bediening', 'keuken'];
+
+const pubWeekGrid  = document.getElementById('pub-week-grid');
+const pubWeekLabel = document.getElementById('pub-week-label');
+const pubPrevBtn   = document.getElementById('pub-prev-week');
+const pubNextBtn   = document.getElementById('pub-next-week');
+let pubWeekOffset  = 0;
+
+function getMonday(offset = 0) {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  const day = d.getDay() || 7;
+  d.setDate(d.getDate() - day + 1 + offset * 7);
+  return d;
+}
+
+function toLocalKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+async function loadPubWeek() {
+  const monday = getMonday(pubWeekOffset);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  pubWeekLabel.textContent = `${monday.getDate()} ${MONTHS[monday.getMonth()]} – ${sunday.getDate()} ${MONTHS[sunday.getMonth()]}`;
+  pubPrevBtn.disabled = pubWeekOffset === 0;
+
+  pubWeekGrid.innerHTML = '<p style="padding:1.5rem;color:#aaa;font-style:italic">Laden…</p>';
+
+  const dates = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d;
+  });
+
+  const mondayKey = toLocalKey(monday);
+  const sundayKey = toLocalKey(sunday);
+
+  const [snaps, eventsSnap] = await Promise.all([
+    Promise.all(dates.map(d => getDoc(doc(db, 'rooster', toDateKey(d))))),
+    getDocs(query(
+      collection(db, 'evenementen'),
+      where('datum', '>=', mondayKey),
+      where('datum', '<=', sundayKey),
+      orderBy('datum')
+    )),
+  ]);
+
+  const eventsByDate = {};
+  eventsSnap.forEach(s => {
+    const { datum, titel, beschrijving } = s.data();
+    if (!eventsByDate[datum]) eventsByDate[datum] = [];
+    eventsByDate[datum].push({ titel, beschrijving });
+  });
+
+  const roster = dates.map((d, i) => ({
+    label: DAY_NAMES[i],
+    date: d.getDate(),
+    month: MONTHS[d.getMonth()],
+    data: snaps[i].exists() ? snaps[i].data() : {},
+    events: eventsByDate[toLocalKey(d)] || [],
+  }));
+
+  renderPubGrid(roster);
+}
+
+function renderPubGrid(roster) {
+  pubWeekGrid.innerHTML = '';
+  pubWeekGrid.className = 'dash-roster';
+
+  for (const d of roster) {
+    const dayEl = document.createElement('div');
+    dayEl.className = 'dash-day';
+
+    const head = document.createElement('div');
+    head.className = 'dash-day-head';
+    head.innerHTML = `<span class="dash-day-label">${d.label}</span><span class="dash-day-date">${d.date} ${d.month}</span>`;
+    dayEl.appendChild(head);
+
+    for (const ev of d.events) {
+      const evEl = document.createElement('div');
+      evEl.className = 'dash-event';
+      evEl.innerHTML = `<span class="dash-event__title">${ev.titel}</span>${ev.beschrijving ? `<span class="dash-event__desc">${ev.beschrijving}</span>` : ''}`;
+      dayEl.appendChild(evEl);
+    }
+
+    for (const secKey of SECTION_ORDER) {
+      const sec = SECTIONS[secKey];
+      const entries = d.data[secKey] || [];
+
+      const secBar = document.createElement('div');
+      secBar.className = 'dash-sec-bar';
+      secBar.innerHTML = `<span class="dash-sec-dot" style="background:${sec.color}"></span>${sec.label}`;
+      dayEl.appendChild(secBar);
+
+      const cell = document.createElement('div');
+      cell.className = 'dash-cell dash-cell--readonly';
+      for (const entry of entries) {
+        const card = document.createElement('div');
+        card.className = 'dash-shift';
+        card.style.borderLeftColor = sec.color;
+        card.innerHTML = `
+          <span class="dash-shift__time">${entry.start}–${entry.end}</span>
+          <span class="dash-shift__name">${entry.name}</span>
+        `;
+        cell.appendChild(card);
+      }
+      dayEl.appendChild(cell);
+    }
+
+    pubWeekGrid.appendChild(dayEl);
+  }
+}
+
+pubPrevBtn.addEventListener('click', () => { if (pubWeekOffset > 0) { pubWeekOffset--; loadPubWeek(); } });
+pubNextBtn.addEventListener('click', () => { pubWeekOffset++; loadPubWeek(); });
+
+loadPubWeek();

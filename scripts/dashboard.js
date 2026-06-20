@@ -1,7 +1,8 @@
 import { db, auth } from "./firebase.js";
 import {
   doc, getDoc, setDoc, updateDoc, arrayUnion,
-  collection, query, where, orderBy, getDocs
+  collection, query, where, orderBy, getDocs,
+  addDoc, deleteDoc
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 import {
   signInWithEmailAndPassword, signOut, onAuthStateChanged
@@ -129,16 +130,22 @@ async function loadWeek() {
     d.setDate(monday.getDate() + i);
     return d;
   });
-  const mondayKey = toDateKey(monday);
-  const sundayKey = toDateKey(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6));
+  const toLocalKey = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const mondayKey = toLocalKey(monday);
+  const sundayKey = toLocalKey(sunday);
 
-  const [snaps, eventsSnap] = await Promise.all([
+  const [snaps, eventsSnap, verlofSnap] = await Promise.all([
     Promise.all(dates.map(d => getDoc(doc(db, 'rooster', toDateKey(d))))),
     getDocs(query(
       collection(db, 'evenementen'),
       where('datum', '>=', mondayKey),
       where('datum', '<=', sundayKey),
       orderBy('datum')
+    )),
+    getDocs(query(
+      collection(db, 'verlof'),
+      where('van', '<=', sundayKey),
+      orderBy('van')
     )),
   ]);
 
@@ -149,7 +156,20 @@ async function loadWeek() {
     eventsByDate[datum].push({ titel, beschrijving });
   });
 
-  const toLocalKey = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const verlofRecords = [];
+  verlofSnap.forEach(s => verlofRecords.push({ id: s.id, ...s.data() }));
+
+  const verlofByDate = {};
+  for (const v of verlofRecords) {
+    if (v.tot < mondayKey) continue;
+    for (const d of dates) {
+      const key = toLocalKey(d);
+      if (key >= v.van && key <= v.tot) {
+        if (!verlofByDate[key]) verlofByDate[key] = [];
+        verlofByDate[key].push(v.naam);
+      }
+    }
+  }
 
   const roster = dates.map((d, i) => ({
     i,
@@ -159,6 +179,7 @@ async function loadWeek() {
     key: toDateKey(d),
     data: snaps[i].exists() ? snaps[i].data() : {},
     events: eventsByDate[toLocalKey(d)] || [],
+    verlof: verlofByDate[toLocalKey(d)] || [],
   }));
 
   renderRosterGrid(roster);
@@ -168,21 +189,42 @@ function renderRosterGrid(roster) {
   weekGrid.innerHTML = '';
   weekGrid.className = 'dash-roster';
   const isTouch = window.matchMedia('(hover: none)').matches;
+  const now = new Date();
+  const todayLabel = `${now.getDate()} ${MONTHS[now.getMonth()]}`;
 
   for (const d of roster) {
+    const isToday = `${d.date} ${d.month}` === todayLabel;
     const dayEl = document.createElement('div');
-    dayEl.className = 'dash-day';
+    dayEl.className = 'dash-day' + (isToday ? ' dash-day--today' : '');
 
     const head = document.createElement('div');
     head.className = 'dash-day-head';
     head.innerHTML = `<span class="dash-day-label">${d.label}</span><span class="dash-day-date">${d.date} ${d.month}</span>`;
     dayEl.appendChild(head);
 
+    if (d.verlof.length > 0) {
+      const verlofBar = document.createElement('div');
+      verlofBar.className = 'dash-verlof-bar';
+      verlofBar.innerHTML = d.verlof.map(n => `<span class="dash-verlof-pill">✈ ${n}</span>`).join('');
+      dayEl.appendChild(verlofBar);
+    }
+
     for (const ev of d.events) {
       const evEl = document.createElement('div');
       evEl.className = 'dash-event';
       evEl.innerHTML = `<span class="dash-event__title">${ev.titel}</span>${ev.beschrijving ? `<span class="dash-event__desc">${ev.beschrijving}</span>` : ''}`;
       dayEl.appendChild(evEl);
+    }
+
+    const isClosed = d.i === 0 && d.date !== 29;
+
+    if (isClosed) {
+      const closedEl = document.createElement('div');
+      closedEl.className = 'dash-closed';
+      closedEl.textContent = 'Gesloten';
+      dayEl.appendChild(closedEl);
+      weekGrid.appendChild(dayEl);
+      continue;
     }
 
     for (const secKey of SECTION_ORDER) {
@@ -273,11 +315,11 @@ function openAddShiftModal(day, secKey) {
         </div>
         <div class="wr-modal__row">
           <label class="wr-modal__label">Begin</label>
-          <input class="wr-modal__input" id="wr-modal-start" type="time" value="16:00" />
+          <input class="wr-modal__input" id="wr-modal-start" type="time" value="12:00" />
         </div>
         <div class="wr-modal__row">
           <label class="wr-modal__label">Einde</label>
-          <input class="wr-modal__input" id="wr-modal-end" type="time" value="23:00" />
+          <input class="wr-modal__input" id="wr-modal-end" type="time" value="22:00" />
         </div>
         <p class="wr-modal__error" id="wr-modal-error"></p>
       </div>
@@ -524,4 +566,59 @@ myNameInput.addEventListener("input", () => {
 });
 
 loadWeek();
+
+// ── Verlof ────────────────────────────────────────────────────────────────
+
+const verlofForm     = document.getElementById('verlof-form');
+const verlofFeedback = document.getElementById('verlof-feedback');
+const verlofList     = document.getElementById('verlof-list');
+
+async function loadVerlofList() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  const snap = await getDocs(query(
+    collection(db, 'verlof'),
+    where('tot', '>=', todayKey),
+    orderBy('tot')
+  ));
+  verlofList.innerHTML = '';
+  if (snap.empty) {
+    verlofList.innerHTML = '<li class="verlof-list__empty">Geen actief verlof.</li>';
+    return;
+  }
+  snap.forEach(s => {
+    const { naam, van, tot } = s.data();
+    const li = document.createElement('li');
+    li.className = 'verlof-list__item';
+    li.innerHTML = `
+      <span class="verlof-list__naam">${naam}</span>
+      <span class="verlof-list__dates">${van} – ${tot}</span>
+      <button class="verlof-list__del" data-id="${s.id}" aria-label="Verwijderen">×</button>
+    `;
+    li.querySelector('.verlof-list__del').addEventListener('click', async () => {
+      await deleteDoc(doc(db, 'verlof', s.id));
+      loadVerlofList();
+      loadWeek();
+    });
+    verlofList.appendChild(li);
+  });
+}
+
+verlofForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  const naam = document.getElementById('verlof-naam').value.trim();
+  const van  = document.getElementById('verlof-van').value;
+  const tot  = document.getElementById('verlof-tot').value;
+  if (!naam || !van || !tot) { verlofFeedback.textContent = 'Vul alle velden in.'; return; }
+  if (tot < van) { verlofFeedback.textContent = '"Tot" mag niet voor "Van" liggen.'; return; }
+  await addDoc(collection(db, 'verlof'), { naam, van, tot });
+  verlofFeedback.textContent = `✓ Verlof voor ${naam} toegevoegd.`;
+  verlofForm.reset();
+  loadVerlofList();
+  loadWeek();
+});
+
+loadVerlofList();
+
 } // end initDashboard

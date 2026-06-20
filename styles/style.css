@@ -227,6 +227,15 @@ body {
   padding: var(--space-xl);
 }
 
+/* ── Public index ── */
+.public-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-l);
+  padding: var(--space-l);
+  width: 100%;
+}
+
 /* ── Dashboard ── */
 .dashboard {
   display: flex;
@@ -500,6 +509,10 @@ body {
   overflow: hidden;
 }
 
+.dashboard__section-body {
+  padding: 18px;
+}
+
 .dashboard__overview-header {
   display: flex;
   align-items: center;
@@ -559,6 +572,69 @@ body {
   overflow-x: auto;
 }
 
+/* ── Verlof in roostergrid ── */
+.dash-verlof-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 4px 6px;
+  background: #fff0f0;
+  border-bottom: 1px solid #f5c5c5;
+}
+.dash-verlof-pill {
+  font-size: 9px;
+  font-weight: 700;
+  color: #c0392b;
+  background: #fde8e8;
+  border: 1px solid #f5c5c5;
+  border-radius: 10px;
+  padding: 1px 6px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+/* ── Verlof lijst ── */
+.verlof-list {
+  list-style: none;
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.verlof-list__empty {
+  color: #aaa;
+  font-style: italic;
+  font-size: 0.875rem;
+}
+.verlof-list__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: #fff5f5;
+  border: 1px solid #f5c5c5;
+  border-radius: 6px;
+  font-size: 0.875rem;
+}
+.verlof-list__naam {
+  font-weight: 600;
+  color: #111844;
+  flex: 1;
+}
+.verlof-list__dates {
+  color: #888;
+  font-size: 0.8rem;
+}
+.verlof-list__del {
+  background: none;
+  border: none;
+  color: #c0392b;
+  font-size: 1.1rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 4px;
+}
+
 /* ── Evenementen in roostergrid ── */
 .dash-event {
   display: flex;
@@ -595,6 +671,26 @@ body {
 }
 .dash-day:last-child {
   border-right: none;
+}
+.dash-closed {
+  padding: 16px 10px;
+  color: #bbb;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  text-align: center;
+}
+
+.dash-day--today {
+  background: #f5f7ff;
+}
+.dash-day--today .dash-day-head {
+  background: #111844;
+}
+.dash-day--today .dash-day-label,
+.dash-day--today .dash-day-date {
+  color: #fff;
 }
 
 .dash-day-head {
@@ -653,6 +749,13 @@ body {
 }
 .dash-cell:last-child {
   border-bottom: none;
+}
+.dash-cell--readonly {
+  cursor: default;
+  min-height: 60px;
+}
+.dash-cell--readonly:hover {
+  background: #fff;
 }
 .dash-cell:hover {
   background: #fafaf8;

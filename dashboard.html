@@ -20,14 +20,30 @@
         <form id="login-form" class="roster-form" novalidate>
           <div class="form-group">
             <label for="login-email">E-mailadres</label>
-            <input type="email" id="login-email" name="email" autocomplete="username" required />
+            <input
+              type="email"
+              id="login-email"
+              name="email"
+              autocomplete="username"
+              required
+            />
           </div>
           <div class="form-group">
             <label for="login-password">Wachtwoord</label>
-            <input type="password" id="login-password" name="password" autocomplete="current-password" required />
+            <input
+              type="password"
+              id="login-password"
+              name="password"
+              autocomplete="current-password"
+              required
+            />
           </div>
           <button type="submit" class="btn btn--primary">Inloggen</button>
-          <p class="form-feedback form-feedback--error" id="login-error" aria-live="polite"></p>
+          <p
+            class="form-feedback form-feedback--error"
+            id="login-error"
+            aria-live="polite"
+          ></p>
         </form>
       </div>
     </div>
@@ -35,58 +51,128 @@
     <header class="site-header" id="site-header" hidden>
       <a href="index.html" class="btn btn--ghost">← Rooster</a>
       <span class="logo">Beheer</span>
-      <a href="weekrooster.html" class="btn btn--ghost">Weekrooster</a>
+      <!-- <a href="weekrooster.html" class="btn btn--ghost">Weekrooster</a> -->
       <button class="btn btn--ghost" id="logout-btn">Uitloggen</button>
     </header>
 
     <main id="main" class="dashboard" hidden>
-
       <section class="dashboard__overview">
         <div class="dashboard__overview-header">
           <h2>Geplande diensten</h2>
           <div class="overview-nav">
-            <button class="dash-nav-btn" id="prev-week" aria-label="Vorige week">&#8249;</button>
+            <button
+              class="dash-nav-btn"
+              id="prev-week"
+              aria-label="Vorige week"
+            >
+              &#8249;
+            </button>
             <span id="week-label" class="week-label"></span>
-            <button class="dash-nav-btn" id="next-week" aria-label="Volgende week">&#8250;</button>
+            <button
+              class="dash-nav-btn"
+              id="next-week"
+              aria-label="Volgende week"
+            >
+              &#8250;
+            </button>
           </div>
         </div>
         <div class="week-grid" id="week-grid"></div>
       </section>
 
-      <section class="dashboard__form-wrap">
-        <h2>Evenement toevoegen</h2>
-        <form id="event-form" class="roster-form" novalidate>
-          <div class="form-group">
-            <label for="event-date">Datum</label>
-            <input type="date" id="event-date" name="event-date" required />
-          </div>
-          <div class="form-group">
-            <label for="event-title">Titel</label>
-            <input type="text" id="event-title" name="event-title" placeholder="Bijv. Personeelsfeest" required autocomplete="off" />
-          </div>
-          <div class="form-group">
-            <label for="event-desc">Omschrijving <span style="font-weight:400;text-transform:none">(optioneel)</span></label>
-            <textarea id="event-desc" name="event-desc" rows="3" placeholder="Extra info…"></textarea>
-          </div>
-          <button type="submit" class="btn btn--primary">Toevoegen</button>
-          <p class="form-feedback" id="event-feedback" aria-live="polite"></p>
-        </form>
+      <section class="dashboard__overview" style="max-width: 600px">
+        <div class="dashboard__overview-header">
+          <h2>Evenement toevoegen</h2>
+        </div>
+        <div class="dashboard__section-body">
+          <form id="event-form" class="roster-form" novalidate>
+            <div class="form-group">
+              <label for="event-date">Datum</label>
+              <input type="date" id="event-date" name="event-date" required />
+            </div>
+            <div class="form-group">
+              <label for="event-title">Titel</label>
+              <input
+                type="text"
+                id="event-title"
+                name="event-title"
+                placeholder="Bijv. Personeelsfeest"
+                required
+                autocomplete="off"
+              />
+            </div>
+            <div class="form-group">
+              <label for="event-desc"
+                >Omschrijving
+                <span style="font-weight: 400; text-transform: none"
+                  >(optioneel)</span
+                ></label
+              >
+              <textarea
+                id="event-desc"
+                name="event-desc"
+                rows="3"
+                placeholder="Extra info…"
+              ></textarea>
+            </div>
+            <button type="submit" class="btn btn--primary">Toevoegen</button>
+            <p class="form-feedback" id="event-feedback" aria-live="polite"></p>
+          </form>
+        </div>
       </section>
 
-      <section class="dashboard__form-wrap">
-        <h2>Aankomende evenementen</h2>
-        <ul class="events-list events-list--manage" id="dashboard-events-list"></ul>
+      <section class="dashboard__overview" style="max-width: 600px">
+        <div class="dashboard__overview-header">
+          <h2>Aankomende evenementen</h2>
+        </div>
+        <div class="dashboard__section-body">
+          <ul
+            class="events-list events-list--manage"
+            id="dashboard-events-list"
+          ></ul>
+        </div>
+      </section>
+
+      <section class="dashboard__overview" style="max-width: 600px">
+        <div class="dashboard__overview-header">
+          <h2>Verlof invoeren</h2>
+        </div>
+        <div class="dashboard__section-body">
+          <form id="verlof-form" class="roster-form" novalidate>
+            <div class="form-group">
+              <label for="verlof-naam">Naam</label>
+              <input type="text" id="verlof-naam" placeholder="Bijv. Jamie" required autocomplete="off" />
+            </div>
+            <div style="display:flex;gap:1rem">
+              <div class="form-group" style="flex:1">
+                <label for="verlof-van">Van</label>
+                <input type="date" id="verlof-van" required />
+              </div>
+              <div class="form-group" style="flex:1">
+                <label for="verlof-tot">Tot en met</label>
+                <input type="date" id="verlof-tot" required />
+              </div>
+            </div>
+            <button type="submit" class="btn btn--primary">Toevoegen</button>
+            <p class="form-feedback" id="verlof-feedback" aria-live="polite"></p>
+          </form>
+          <ul class="verlof-list" id="verlof-list"></ul>
+        </div>
       </section>
 
       <section class="dashboard__mine">
         <h2>Mijn rooster</h2>
         <div class="form-group">
           <label for="my-name">Jouw naam</label>
-          <input type="text" id="my-name" placeholder="Bijv. Lisa" autocomplete="off" />
+          <input
+            type="text"
+            id="my-name"
+            placeholder="Bijv. Lisa"
+            autocomplete="off"
+          />
         </div>
         <ul class="my-shifts" id="my-shifts"></ul>
       </section>
-
     </main>
 
     <script type="module" src="scripts/dashboard.js"></script>

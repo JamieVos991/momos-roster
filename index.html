@@ -11,6 +11,7 @@
     <link rel="icon" href="images/favicon.png" />
     <link rel="stylesheet" href="styles/styleguide.css" />
     <link rel="stylesheet" href="styles/style.css" />
+    <link rel="stylesheet" href="styles/weekrooster.css" />
     <script>
       document.documentElement.classList.add("js");
     </script>
@@ -21,48 +22,69 @@
       <a href="dashboard.html" class="btn btn--ghost">Beheer</a>
     </header>
 
-    <main id="main">
-      <div class="day-nav">
-        <button class="btn btn--icon" id="prev-day" aria-label="Vorige dag">
-          &#8592
-        </button>
-        <h1 class="day-title" id="day-title">Laden…</h1>
-        <button class="btn btn--icon" id="next-day" aria-label="Volgende dag">
-          &#8594;
-        </button>
-      </div>
+    <main id="main" class="public-main">
 
-      <div class="roster" id="roster">
-        <section class="roster__section" id="section-bediening">
-          <h2 class="roster__heading">Bediening</h2>
-          <ul class="card-list" id="list-bediening"></ul>
-        </section>
-
-        <section class="roster__section" id="section-keuken">
-          <h2 class="roster__heading">Keuken</h2>
-          <ul class="card-list" id="list-keuken"></ul>
-        </section>
-      </div>
-
-      <p class="empty-state" id="empty-state" hidden>
-        Geen diensten ingepland voor deze dag.
-      </p>
-
-      <section class="events-section">
-        <h2 class="events-section__heading">Evenementen</h2>
-        <ul class="events-list" id="events-list">
-          <li class="event-card event-card--loading"></li>
-        </ul>
-      </section>
-
-      <section class="my-roster-section">
-        <h2 class="my-roster-section__heading">Mijn rooster</h2>
-        <div class="form-group">
-          <label for="my-name">Jouw naam</label>
-          <input type="text" id="my-name" placeholder="Bijv. Lisa" autocomplete="off" />
+      <section class="dashboard__overview">
+        <div class="dashboard__overview-header">
+          <h2>Weekoverzicht</h2>
+          <div class="overview-nav">
+            <button class="dash-nav-btn" id="pub-prev-week" aria-label="Vorige week">&#8249;</button>
+            <span id="pub-week-label" class="week-label"></span>
+            <button class="dash-nav-btn" id="pub-next-week" aria-label="Volgende week">&#8250;</button>
+          </div>
         </div>
-        <ul class="my-shifts" id="my-shifts"></ul>
+        <div class="week-grid" id="pub-week-grid"></div>
       </section>
+
+      <section class="dashboard__overview">
+        <div class="dashboard__overview-header">
+          <div class="overview-nav" style="flex:1;justify-content:space-between">
+            <button class="dash-nav-btn" id="prev-day" aria-label="Vorige dag">&#8249;</button>
+            <h2 id="day-title" style="margin:0;font-size:1rem">Laden…</h2>
+            <button class="dash-nav-btn" id="next-day" aria-label="Volgende dag">&#8250;</button>
+          </div>
+        </div>
+        <div class="dashboard__section-body">
+          <div class="roster" id="roster">
+            <section class="roster__section" id="section-bediening">
+              <h2 class="roster__heading">Bediening</h2>
+              <ul class="card-list" id="list-bediening"></ul>
+            </section>
+            <section class="roster__section" id="section-keuken">
+              <h2 class="roster__heading">Keuken</h2>
+              <ul class="card-list" id="list-keuken"></ul>
+            </section>
+          </div>
+          <p class="empty-state" id="empty-state" hidden>
+            Geen diensten ingepland voor deze dag.
+          </p>
+        </div>
+      </section>
+
+      <section class="dashboard__overview">
+        <div class="dashboard__overview-header">
+          <h2>Evenementen</h2>
+        </div>
+        <div class="dashboard__section-body">
+          <ul class="events-list" id="events-list">
+            <li class="event-card event-card--loading"></li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="dashboard__overview">
+        <div class="dashboard__overview-header">
+          <h2>Mijn rooster</h2>
+        </div>
+        <div class="dashboard__section-body">
+          <div class="form-group" style="margin-bottom:1rem">
+            <label for="my-name">Jouw naam</label>
+            <input type="text" id="my-name" placeholder="Bijv. Lisa" autocomplete="off" />
+          </div>
+          <ul class="my-shifts" id="my-shifts"></ul>
+        </div>
+      </section>
+
     </main>
 
     <script type="module" src="scripts/roster.js"></script>
