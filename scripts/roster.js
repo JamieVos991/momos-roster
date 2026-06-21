@@ -200,7 +200,7 @@ async function loadPubWeek() {
   const sundayKey = toLocalKey(sunday);
 
   const [snaps, eventsSnap] = await Promise.all([
-    Promise.all(dates.map(d => getDoc(doc(db, 'rooster', toDateKey(d))))),
+    Promise.all(dates.map(d => getDoc(doc(db, 'rooster', toLocalKey(d))))),
     getDocs(query(
       collection(db, 'evenementen'),
       where('datum', '>=', mondayKey),

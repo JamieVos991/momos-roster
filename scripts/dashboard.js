@@ -11,22 +11,33 @@ import { loadUpcomingEvents, addEvent } from "./events.js";
 
 // ── Rooster constants ──────────────────────────────────────────────────────
 
-const SECTIONS = {
-  bediening: { label: 'Bediening', color: '#7288ae' },
-  keuken:    { label: 'Keuken',    color: '#4b5694' },
-};
-const SECTION_ORDER = ['bediening', 'keuken'];
-const EMPLOYEES = [
-  { id: 'sanne',  name: 'Sanne',  section: 'bediening', rate: 16 },
-  { id: 'daan',   name: 'Daan',   section: 'bediening', rate: 14.5 },
-  { id: 'lotte',  name: 'Lotte',  section: 'bediening', rate: 15 },
-  { id: 'sophie', name: 'Sophie', section: 'bediening', rate: 14 },
-  { id: 'marco',  name: 'Marco',  section: 'keuken',    rate: 22, badge: 'Chef' },
-  { id: 'emma',   name: 'Emma',   section: 'keuken',    rate: 17 },
-  { id: 'noa',    name: 'Noa',    section: 'keuken',    rate: 16.5 },
-];
-const UNAVAIL = new Set(['lotte-2', 'emma-5', 'sophie-6']);
+let SECTIONS = {};
+let SECTION_ORDER = [];
 const DAY_NAMES = ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'];
+
+const FUNCTIES_DEFAULTS = [
+  { key: 'bediening',   label: 'Bediening',   color: '#7288ae', volgorde: 0 },
+  { key: 'keuken',      label: 'Keuken',      color: '#4b5694', volgorde: 1 },
+  { key: 'spoelkeuken', label: 'Spoelkeuken', color: '#7a9e7e', volgorde: 2 },
+];
+
+async function loadFuncties() {
+  const snap = await getDocs(query(collection(db, 'functies'), orderBy('volgorde')));
+  if (snap.empty) {
+    await Promise.all(
+      FUNCTIES_DEFAULTS.map(({ key, ...data }) => setDoc(doc(db, 'functies', key), data))
+    );
+    SECTIONS = Object.fromEntries(FUNCTIES_DEFAULTS.map(({ key, label, color }) => [key, { label, color }]));
+    SECTION_ORDER = FUNCTIES_DEFAULTS.map(d => d.key);
+  } else {
+    SECTIONS = {};
+    SECTION_ORDER = [];
+    snap.forEach(s => {
+      SECTIONS[s.id] = { label: s.data().label, color: s.data().color };
+      SECTION_ORDER.push(s.id);
+    });
+  }
+}
 
 function shiftHrs(start, end) {
   const [ah, am] = start.split(':').map(Number);
@@ -75,9 +86,13 @@ loginForm.addEventListener("submit", async e => {
 logoutBtn.addEventListener("click", () => signOut(auth));
 
 let dashboardInitialized = false;
-function initDashboard() {
+async function initDashboard() {
   if (dashboardInitialized) return;
   dashboardInitialized = true;
+
+  await loadFuncties();
+
+let dragSrc = null; // { dayKey, secKey, entry }
 
 const weekGrid = document.getElementById("week-grid");
 const weekLabel = document.getElementById("week-label");
@@ -120,7 +135,8 @@ async function loadWeek() {
   const monday = getMonday(weekOffset);
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
-  weekLabel.textContent = `${monday.getDate()} ${MONTHS[monday.getMonth()]} – ${sunday.getDate()} ${MONTHS[sunday.getMonth()]}`;
+  const wn = weekKey(weekOffset).split('-W')[1];
+  weekLabel.textContent = `Week ${wn} · ${monday.getDate()} ${MONTHS[monday.getMonth()]} – ${sunday.getDate()} ${MONTHS[sunday.getMonth()]}`;
   prevWeekBtn.disabled = weekOffset === 0;
 
   weekGrid.innerHTML = '<p style="padding:1.5rem;color:#aaa;font-style:italic">Laden…</p>';
@@ -193,13 +209,30 @@ function renderRosterGrid(roster) {
   const todayLabel = `${now.getDate()} ${MONTHS[now.getMonth()]}`;
 
   for (const d of roster) {
-    const isToday = `${d.date} ${d.month}` === todayLabel;
+    const isToday  = `${d.date} ${d.month}` === todayLabel;
+    const isClosed = !!d.data.gesloten;
     const dayEl = document.createElement('div');
-    dayEl.className = 'dash-day' + (isToday ? ' dash-day--today' : '');
+    dayEl.className = 'dash-day' + (isToday ? ' dash-day--today' : '') + (isClosed ? ' dash-day--closed' : '');
 
     const head = document.createElement('div');
     head.className = 'dash-day-head';
-    head.innerHTML = `<span class="dash-day-label">${d.label}</span><span class="dash-day-date">${d.date} ${d.month}</span>`;
+    head.innerHTML = `<div class="dash-day-head__text"><span class="dash-day-label">${d.label}</span><span class="dash-day-date">${d.date} ${d.month}</span></div>`;
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'dash-day-close-btn';
+    closeBtn.textContent = isClosed ? 'Openen' : 'Sluiten';
+    closeBtn.addEventListener('click', async e => {
+      e.stopPropagation();
+      const ref  = doc(db, 'rooster', d.key);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        await updateDoc(ref, { gesloten: !isClosed });
+      } else {
+        await setDoc(ref, { gesloten: true });
+      }
+      loadWeek();
+    });
+    head.appendChild(closeBtn);
     dayEl.appendChild(head);
 
     if (d.verlof.length > 0) {
@@ -216,7 +249,43 @@ function renderRosterGrid(roster) {
       dayEl.appendChild(evEl);
     }
 
-    const isClosed = d.i === 0 && d.date !== 29;
+    // Notitie
+    const notitie = d.data.notitie || '';
+    const noteEl = document.createElement('div');
+    noteEl.className = 'dash-note' + (notitie ? '' : ' dash-note--empty');
+    noteEl.textContent = notitie;
+    noteEl.setAttribute('contenteditable', 'false');
+    noteEl.dataset.original = notitie;
+    noteEl.addEventListener('click', e => {
+      e.stopPropagation();
+      noteEl.setAttribute('contenteditable', 'true');
+      noteEl.classList.remove('dash-note--empty');
+      noteEl.focus();
+      const range = document.createRange();
+      range.selectNodeContents(noteEl);
+      range.collapse(false);
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(range);
+    });
+    noteEl.addEventListener('blur', async () => {
+      noteEl.setAttribute('contenteditable', 'false');
+      const text = noteEl.textContent.trim();
+      noteEl.classList.toggle('dash-note--empty', !text);
+      if (text === noteEl.dataset.original) return;
+      noteEl.dataset.original = text;
+      const ref = doc(db, 'rooster', d.key);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        await updateDoc(ref, { notitie: text });
+      } else if (text) {
+        await setDoc(ref, { notitie: text });
+      }
+    });
+    noteEl.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); noteEl.blur(); }
+      if (e.key === 'Escape') { noteEl.textContent = noteEl.dataset.original; noteEl.blur(); }
+    });
+    dayEl.appendChild(noteEl);
 
     if (isClosed) {
       const closedEl = document.createElement('div');
@@ -243,6 +312,7 @@ function renderRosterGrid(roster) {
         const card = document.createElement('div');
         card.className = 'dash-shift';
         card.style.borderLeftColor = sec.color;
+        card.setAttribute('draggable', 'true');
         card.innerHTML = `
           <span class="dash-shift__time">${entry.start}–${entry.end}</span>
           <span class="dash-shift__name">${entry.name}</span>
@@ -250,6 +320,15 @@ function renderRosterGrid(roster) {
         card.addEventListener(isTouch ? 'click' : 'dblclick', e => {
           e.stopPropagation();
           openEditShiftModal(d, secKey, entry);
+        });
+        card.addEventListener('dragstart', e => {
+          dragSrc = { dayKey: d.key, secKey, entry };
+          e.dataTransfer.effectAllowed = 'move';
+          setTimeout(() => card.classList.add('dash-shift--dragging'), 0);
+        });
+        card.addEventListener('dragend', () => {
+          card.classList.remove('dash-shift--dragging');
+          dragSrc = null;
         });
         cell.appendChild(card);
       }
@@ -262,6 +341,43 @@ function renderRosterGrid(roster) {
       cell.appendChild(addBtn);
 
       if (!isTouch) cell.addEventListener('dblclick', () => openAddShiftModal(d, secKey));
+
+      cell.addEventListener('dragover', e => {
+        if (!dragSrc) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        cell.classList.add('dash-cell--dragover');
+      });
+      cell.addEventListener('dragleave', e => {
+        if (!cell.contains(e.relatedTarget)) cell.classList.remove('dash-cell--dragover');
+      });
+      cell.addEventListener('drop', async e => {
+        e.preventDefault();
+        cell.classList.remove('dash-cell--dragover');
+        if (!dragSrc) return;
+        const { dayKey: srcDayKey, secKey: srcSecKey, entry } = dragSrc;
+        dragSrc = null;
+        if (srcDayKey === d.key && srcSecKey === secKey) return;
+
+        const srcRef = doc(db, 'rooster', srcDayKey);
+        const srcSnap = await getDoc(srcRef);
+        if (srcSnap.exists()) {
+          const updated = (srcSnap.data()[srcSecKey] || []).filter(
+            e2 => !(e2.name === entry.name && e2.start === entry.start && e2.end === entry.end)
+          );
+          await updateDoc(srcRef, { [srcSecKey]: updated });
+        }
+
+        const dstRef = doc(db, 'rooster', d.key);
+        const dstSnap = await getDoc(dstRef);
+        if (dstSnap.exists()) {
+          await updateDoc(dstRef, { [secKey]: arrayUnion(entry) });
+        } else {
+          await setDoc(dstRef, { [secKey]: [entry] });
+        }
+
+        loadWeek();
+      });
 
       dayEl.appendChild(cell);
     }
@@ -284,8 +400,6 @@ async function removeShift(dayKey, secKey, entry) {
 function openAddShiftModal(day, secKey) {
   document.getElementById('wr-add-modal')?.remove();
 
-  const empOptions = EMPLOYEES.map(e => `<option value="${e.name}">`).join('');
-
   const overlay = document.createElement('div');
   overlay.id = 'wr-add-modal';
   overlay.className = 'wr-modal-overlay';
@@ -299,18 +413,16 @@ function openAddShiftModal(day, secKey) {
         <div class="wr-modal__row">
           <label class="wr-modal__label">Naam</label>
           <input class="wr-modal__input" id="wr-modal-name" type="text" value=""
-            list="wr-emp-list" autocomplete="off" placeholder="Naam medewerker" />
-          <datalist id="wr-emp-list">${empOptions}</datalist>
+            autocomplete="off" placeholder="Naam medewerker" />
         </div>
         <div class="wr-modal__row">
           <label class="wr-modal__label">Functie</label>
           <div class="wr-modal__radios">
-            <label class="wr-modal__radio">
-              <input type="radio" name="wr-functie" value="bediening" ${secKey === 'bediening' ? 'checked' : ''}> Bediening
-            </label>
-            <label class="wr-modal__radio">
-              <input type="radio" name="wr-functie" value="keuken" ${secKey === 'keuken' ? 'checked' : ''}> Keuken
-            </label>
+            ${SECTION_ORDER.map(key => `
+              <label class="wr-modal__radio">
+                <input type="radio" name="wr-functie" value="${key}" ${key === secKey ? 'checked' : ''}> ${SECTIONS[key].label}
+              </label>
+            `).join('')}
           </div>
         </div>
         <div class="wr-modal__row">
@@ -374,7 +486,6 @@ function openAddShiftModal(day, secKey) {
 function openEditShiftModal(d, secKey, entry) {
   document.getElementById('wr-add-modal')?.remove();
 
-  const empOptions = EMPLOYEES.map(e => `<option value="${e.name}">`).join('');
   const sec = SECTIONS[secKey];
 
   const overlay = document.createElement('div');
@@ -390,18 +501,16 @@ function openEditShiftModal(d, secKey, entry) {
         <div class="wr-modal__row">
           <label class="wr-modal__label">Naam</label>
           <input class="wr-modal__input" id="wr-modal-name" type="text" value="${entry.name}"
-            list="wr-emp-list" autocomplete="off" />
-          <datalist id="wr-emp-list">${empOptions}</datalist>
+            autocomplete="off" />
         </div>
         <div class="wr-modal__row">
           <label class="wr-modal__label">Functie</label>
           <div class="wr-modal__radios">
-            <label class="wr-modal__radio">
-              <input type="radio" name="wr-functie" value="bediening" ${secKey === 'bediening' ? 'checked' : ''}> Bediening
-            </label>
-            <label class="wr-modal__radio">
-              <input type="radio" name="wr-functie" value="keuken" ${secKey === 'keuken' ? 'checked' : ''}> Keuken
-            </label>
+            ${SECTION_ORDER.map(key => `
+              <label class="wr-modal__radio">
+                <input type="radio" name="wr-functie" value="${key}" ${key === secKey ? 'checked' : ''}> ${SECTIONS[key].label}
+              </label>
+            `).join('')}
           </div>
         </div>
         <div class="wr-modal__row">
@@ -490,7 +599,10 @@ const dashboardEventsList = document.getElementById("dashboard-events-list");
 
 document.getElementById("event-date").valueAsDate = new Date();
 
-loadUpcomingEvents(dashboardEventsList, { manage: true });
+loadUpcomingEvents(dashboardEventsList, { manage: true, onLoad: n => {
+  const el = document.getElementById('ev-count');
+  if (el) el.textContent = `${n} evenement${n !== 1 ? 'en' : ''}`;
+}});
 
 eventForm.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -507,63 +619,170 @@ eventForm.addEventListener("submit", async (e) => {
   eventFeedback.textContent = `✓ "${titel}" toegevoegd.`;
   eventForm["event-title"].value = "";
   eventForm["event-desc"].value = "";
-  loadUpcomingEvents(dashboardEventsList, { manage: true });
+  loadUpcomingEvents(dashboardEventsList, { manage: true, onLoad: n => {
+  const el = document.getElementById('ev-count');
+  if (el) el.textContent = `${n} evenement${n !== 1 ? 'en' : ''}`;
+}});
 });
 
-// ── Mijn rooster ──
-async function searchMyShifts(query) {
-  myShiftsList.innerHTML = '<li class="my-shift my-shift--loading">Zoeken…</li>';
+// ── Mijn rooster ──────────────────────────────────────────────────────────
 
-  // Zoek 8 weken vooruit en 1 week terug (63 dagen)
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const days = Array.from({ length: 63 }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() - 7 + i);
-    return d;
-  });
+const DAY_FULL = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
 
-  const snaps = await Promise.all(days.map(d => getDoc(doc(db, "rooster", toDateKey(d)))));
+let mijnWeekData  = [];
+let mijnAllNames  = [];
+let mijnActiveNaam = '';
+let mijnWeekOffset = 0;
 
-  const results = [];
-  days.forEach((date, i) => {
-    if (!snaps[i].exists()) return;
-    const data = snaps[i].data();
-    ["bediening", "keuken"].forEach(afd => {
-      (data[afd] || []).forEach(entry => {
-        if (entry.name.toLowerCase().includes(query.toLowerCase())) {
-          results.push({ date, afd, entry });
-        }
-      });
+const mijnPrevBtn   = document.getElementById('mijn-prev-week');
+const mijnNextBtn   = document.getElementById('mijn-next-week');
+const mijnWeekLabel = document.getElementById('mijn-week-label');
+const mijnWeekBadge = document.getElementById('mijn-week-badge');
+
+function updateMijnWeekLabel() {
+  const monday = getMonday(mijnWeekOffset);
+  const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+  mijnWeekLabel.textContent = `${monday.getDate()} ${MONTHS[monday.getMonth()]} – ${sunday.getDate()} ${MONTHS[sunday.getMonth()]}`;
+  const badge = mijnWeekOffset === 0 ? 'Deze week' : mijnWeekOffset === 1 ? 'Volgende week' : '';
+  mijnWeekBadge.textContent = badge;
+  mijnWeekBadge.hidden = !badge;
+  mijnPrevBtn.disabled = mijnWeekOffset === 0;
+}
+
+mijnPrevBtn.addEventListener('click', () => { if (mijnWeekOffset > 0) { mijnWeekOffset--; loadMijnData(); } });
+mijnNextBtn.addEventListener('click', () => { mijnWeekOffset++; loadMijnData(); });
+
+function mijnCalcH(start, end) {
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  return ((eh * 60 + em) - (sh * 60 + sm)) / 60;
+}
+function mijnFmtH(h) {
+  const r = Math.round(h * 10) / 10;
+  return (Number.isInteger(r) ? r : r.toString().replace('.', ',')) + ' u';
+}
+
+async function loadMijnData() {
+  updateMijnWeekLabel();
+  const monday = getMonday(mijnWeekOffset);
+  const dates  = Array.from({ length: 7 }, (_, i) => { const d = new Date(monday); d.setDate(monday.getDate() + i); return d; });
+  const snaps  = await Promise.all(dates.map(d => getDoc(doc(db, 'rooster', toDateKey(d)))));
+  mijnWeekData = snaps.map(s => s.exists() ? s.data() : {});
+
+  const nameSet = new Set();
+  for (const day of mijnWeekData)
+    for (const key of SECTION_ORDER)
+      (day[key] || []).forEach(e => nameSet.add(e.name));
+  mijnAllNames = [...nameSet].sort();
+  renderMijnChips(mijnAllNames);
+  if (mijnActiveNaam) renderMijnResult(mijnActiveNaam);
+}
+
+function renderMijnChips(names) {
+  const container = document.getElementById('mijn-chips');
+  if (!container) return;
+  container.innerHTML = '';
+  names.forEach(naam => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'mijn-chip' + (naam === mijnActiveNaam ? ' mijn-chip--active' : '');
+    btn.innerHTML = `<span class="mijn-chip__dot"></span>${naam}`;
+    btn.addEventListener('click', () => {
+      mijnActiveNaam = naam;
+      myNameInput.value = naam;
+      renderMijnChips(mijnAllNames);
+      renderMijnResult(naam);
     });
-  });
-
-  myShiftsList.innerHTML = "";
-
-  if (results.length === 0) {
-    myShiftsList.innerHTML = `<li class="my-shift my-shift--empty">Geen diensten gevonden voor "${query}".</li>`;
-    return;
-  }
-
-  results.forEach(({ date, afd, entry }) => {
-    const li = document.createElement("li");
-    li.className = "my-shift";
-    li.innerHTML = `
-      <span class="my-shift__date">${formatShort(date)}</span>
-      <span class="my-shift__afd">${afd}</span>
-      <span class="my-shift__time">${entry.start}–${entry.end}</span>
-    `;
-    myShiftsList.appendChild(li);
+    container.appendChild(btn);
   });
 }
 
-let searchTimer;
-myNameInput.addEventListener("input", () => {
-  clearTimeout(searchTimer);
+function renderMijnResult(naam) {
+  const result = document.getElementById('mijn-result');
+  if (!result || !naam) { if (result) result.innerHTML = ''; return; }
+
+  const monday = getMonday(mijnWeekOffset);
+  let totalH = 0, shiftCount = 0;
+
+  const rows = mijnWeekData.map((dayData, i) => {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + i);
+    const dateStr = `${date.getDate()} ${MONTHS[date.getMonth()]}`;
+    const shifts = [];
+    for (const key of SECTION_ORDER) {
+      (dayData[key] || []).forEach(e => {
+        if (e.name.toLowerCase() === naam.toLowerCase()) {
+          const h = mijnCalcH(e.start, e.end);
+          shifts.push({ ...e, functie: key, h });
+          totalH += h; shiftCount++;
+        }
+      });
+    }
+    return { day: DAY_FULL[i], dateStr, shifts };
+  });
+
+  const wn  = weekKey(mijnWeekOffset).split('-W')[1];
+  const sun = new Date(monday); sun.setDate(monday.getDate() + 6);
+  const weekLbl = `Week ${wn} · ${monday.getDate()}–${sun.getDate()} ${MONTHS[sun.getMonth()]}`;
+  const functies = [...new Set(rows.flatMap(r => r.shifts.map(s => SECTIONS[s.functie]?.label || s.functie)))];
+  const initial  = naam.charAt(0).toUpperCase();
+
+  const dayRows = rows.map(({ day, dateStr, shifts }) => {
+    if (!shifts.length) return `
+      <li class="mijn-day">
+        <div class="mijn-day__label"><strong>${day}</strong><span>${dateStr}</span></div>
+        <div class="mijn-day__free">Vrij</div>
+      </li>`;
+    return shifts.map(s => `
+      <li class="mijn-day">
+        <div class="mijn-day__label"><strong>${day}</strong><span>${dateStr}</span></div>
+        <div class="mijn-day__shift">
+          <span class="mijn-day__bar" style="background:${SECTIONS[s.functie]?.color || '#7288ae'}"></span>
+          <span class="mijn-day__time">${s.start}–${s.end}</span>
+          <span class="mijn-day__pill">${SECTIONS[s.functie]?.label || s.functie}</span>
+        </div>
+        <div class="mijn-day__hours">${mijnFmtH(s.h)}</div>
+      </li>`).join('');
+  }).join('');
+
+  result.innerHTML = `
+    <div class="mijn-card">
+      <div class="mijn-card__top">
+        <div class="mijn-card__avatar">${initial}</div>
+        <div class="mijn-card__info">
+          <strong class="mijn-card__name">${naam}</strong>
+          <div class="mijn-card__meta">${functies.join(', ')} · ${weekLbl}</div>
+        </div>
+        <div class="mijn-card__totals">
+          <div class="mijn-card__hours">${mijnFmtH(totalH)}</div>
+          <div class="mijn-card__count">${shiftCount} ${shiftCount === 1 ? 'DIENST' : 'DIENSTEN'}</div>
+        </div>
+      </div>
+      <ul class="mijn-days">${dayRows}</ul>
+    </div>`;
+}
+
+myNameInput.addEventListener('input', () => {
   const q = myNameInput.value.trim();
-  if (q.length < 2) { myShiftsList.innerHTML = ""; return; }
-  searchTimer = setTimeout(() => searchMyShifts(q), 300);
+  if (!q) {
+    mijnActiveNaam = '';
+    renderMijnChips(mijnAllNames);
+    document.getElementById('mijn-result').innerHTML = '';
+    return;
+  }
+  const filtered = mijnAllNames.filter(n => n.toLowerCase().includes(q.toLowerCase()));
+  renderMijnChips(filtered);
+  if (filtered.length === 1) {
+    mijnActiveNaam = filtered[0];
+    renderMijnResult(filtered[0]);
+  } else if (filtered.find(n => n.toLowerCase() === q.toLowerCase())) {
+    const exact = filtered.find(n => n.toLowerCase() === q.toLowerCase());
+    mijnActiveNaam = exact;
+    renderMijnResult(exact);
+  }
 });
+
+loadMijnData();
 
 loadWeek();
 
@@ -572,6 +791,23 @@ loadWeek();
 const verlofForm     = document.getElementById('verlof-form');
 const verlofFeedback = document.getElementById('verlof-feedback');
 const verlofList     = document.getElementById('verlof-list');
+
+function formatVerlofRange(van, tot) {
+  const MO = ["jan","feb","mrt","apr","mei","jun","jul","aug","sep","okt","nov","dec"];
+  const d1 = new Date(van + 'T00:00:00');
+  const d2 = new Date(tot + 'T00:00:00');
+  if (van === tot) return `${d1.getDate()} ${MO[d1.getMonth()]} ${d1.getFullYear()}`;
+  const sameMonthYear = d1.getMonth() === d2.getMonth() && d1.getFullYear() === d2.getFullYear();
+  const sameYear = d1.getFullYear() === d2.getFullYear();
+  const from = sameMonthYear ? `${d1.getDate()}` : sameYear ? `${d1.getDate()} ${MO[d1.getMonth()]}` : `${d1.getDate()} ${MO[d1.getMonth()]} ${d1.getFullYear()}`;
+  return `${from} – ${d2.getDate()} ${MO[d2.getMonth()]} ${d2.getFullYear()}`;
+}
+
+function countDays(van, tot) {
+  const d1 = new Date(van + 'T00:00:00');
+  const d2 = new Date(tot + 'T00:00:00');
+  return Math.round((d2 - d1) / 86400000) + 1;
+}
 
 async function loadVerlofList() {
   const today = new Date();
@@ -583,20 +819,35 @@ async function loadVerlofList() {
     orderBy('tot')
   ));
   verlofList.innerHTML = '';
+
+  const countEl = document.getElementById('verl-count');
+  if (countEl) countEl.textContent = snap.size ? `${snap.size} aanvrage${snap.size !== 1 ? 'n' : ''}` : '';
+
   if (snap.empty) {
-    verlofList.innerHTML = '<li class="verlof-list__empty">Geen actief verlof.</li>';
+    verlofList.innerHTML = '<li class="verl-item verl-item--empty">Geen actief verlof.</li>';
     return;
   }
-  snap.forEach(s => {
-    const { naam, van, tot } = s.data();
+
+  const records = [];
+  snap.forEach(s => records.push({ id: s.id, ...s.data() }));
+  records.sort((a, b) => a.van.localeCompare(b.van));
+
+  records.forEach(s => {
+    const { naam, van, tot } = s;
+    const days = countDays(van, tot);
+    const initial = naam.charAt(0).toUpperCase();
     const li = document.createElement('li');
-    li.className = 'verlof-list__item';
+    li.className = 'verl-item';
     li.innerHTML = `
-      <span class="verlof-list__naam">${naam}</span>
-      <span class="verlof-list__dates">${van} – ${tot}</span>
-      <button class="verlof-list__del" data-id="${s.id}" aria-label="Verwijderen">×</button>
+      <div class="verl-item__avatar">${initial}</div>
+      <div class="verl-item__body">
+        <strong class="verl-item__name">${naam}</strong>
+        <div class="verl-item__range">${formatVerlofRange(van, tot)}</div>
+      </div>
+      <span class="verl-item__days">${days} dag${days !== 1 ? 'en' : ''}</span>
+      <button class="verl-item__del" aria-label="${naam} verlof verwijderen">×</button>
     `;
-    li.querySelector('.verlof-list__del').addEventListener('click', async () => {
+    li.querySelector('.verl-item__del').addEventListener('click', async () => {
       await deleteDoc(doc(db, 'verlof', s.id));
       loadVerlofList();
       loadWeek();
@@ -620,5 +871,325 @@ verlofForm.addEventListener('submit', async e => {
 });
 
 loadVerlofList();
+
+// ── Functies beheren ──────────────────────────────────────────────────────
+
+const functiesFeedback = document.getElementById('functies-feedback');
+const functiesListEl   = document.getElementById('functies-list');
+
+const PRESET_COLORS = ['#7288ae', '#4b5694', '#7a9e7e', '#c9963a', '#9b59b6', '#3a8a8a'];
+
+let functieItems  = [];
+let functieDragSrc = null;
+
+function renderColorSwatches() {
+  const container = document.getElementById('func-color-swatches');
+  if (!container) return;
+  container.innerHTML = '';
+  PRESET_COLORS.forEach((color, i) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'func-color-swatch' + (i === 0 ? ' func-color-swatch--active' : '');
+    btn.dataset.color = color;
+    btn.style.background = color;
+    btn.addEventListener('click', () => {
+      container.querySelectorAll('.func-color-swatch').forEach(b => b.classList.remove('func-color-swatch--active'));
+      btn.classList.add('func-color-swatch--active');
+    });
+    container.appendChild(btn);
+  });
+}
+
+async function getFunctieCountsThisWeek() {
+  const monday = getMonday(0);
+  const dates  = Array.from({ length: 7 }, (_, i) => { const d = new Date(monday); d.setDate(monday.getDate() + i); return d; });
+  const snaps  = await Promise.all(dates.map(d => getDoc(doc(db, 'rooster', toDateKey(d)))));
+  const counts = {};
+  snaps.forEach(snap => {
+    if (!snap.exists()) return;
+    for (const key of SECTION_ORDER) {
+      counts[key] = (counts[key] || 0) + (snap.data()[key]?.length || 0);
+    }
+  });
+  return counts;
+}
+
+async function renderFunctiesList() {
+  const [snap, counts] = await Promise.all([
+    getDocs(query(collection(db, 'functies'), orderBy('volgorde'))),
+    getFunctieCountsThisWeek(),
+  ]);
+  functieItems = [];
+  snap.forEach(s => functieItems.push({ id: s.id, ...s.data() }));
+  renderFunctiesDOM(counts);
+}
+
+function renderFunctiesDOM(counts = {}) {
+  functiesListEl.innerHTML = '';
+  functieItems.forEach((item, idx) => {
+    const n   = counts[item.id] || 0;
+    const lbl = n === 1 ? '1 medewerker' : `${n} medewerkers`;
+    const li  = document.createElement('li');
+    li.className = 'func-item';
+    li.setAttribute('draggable', 'true');
+    li.innerHTML = `
+      <span class="func-item__handle" aria-hidden="true">⠿</span>
+      <span class="func-item__dot" style="background:${item.color}"></span>
+      <span class="func-item__name">${item.label}</span>
+      <span class="func-item__count">${lbl}</span>
+      <button class="func-item__del" aria-label="${item.label} verwijderen">×</button>
+    `;
+
+    li.querySelector('.func-item__del').addEventListener('click', async () => {
+      await deleteDoc(doc(db, 'functies', item.id));
+      await loadFuncties();
+      await renderFunctiesList();
+      loadWeek();
+      populateBulkFuncties();
+    });
+
+    li.addEventListener('dragstart', e => {
+      functieDragSrc = idx;
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(() => li.classList.add('func-item--dragging'), 0);
+    });
+    li.addEventListener('dragend', () => {
+      li.classList.remove('func-item--dragging');
+      functiesListEl.querySelectorAll('.func-item--over-top, .func-item--over-bottom')
+        .forEach(el => el.classList.remove('func-item--over-top', 'func-item--over-bottom'));
+    });
+    li.addEventListener('dragover', e => {
+      if (functieDragSrc === null) return;
+      e.preventDefault();
+      const mid = li.getBoundingClientRect().top + li.getBoundingClientRect().height / 2;
+      functiesListEl.querySelectorAll('.func-item--over-top, .func-item--over-bottom')
+        .forEach(el => el.classList.remove('func-item--over-top', 'func-item--over-bottom'));
+      li.classList.add(e.clientY < mid ? 'func-item--over-top' : 'func-item--over-bottom');
+    });
+    li.addEventListener('dragleave', e => {
+      if (!li.contains(e.relatedTarget))
+        li.classList.remove('func-item--over-top', 'func-item--over-bottom');
+    });
+    li.addEventListener('drop', async e => {
+      e.preventDefault();
+      const insertBefore = li.classList.contains('func-item--over-top');
+      li.classList.remove('func-item--over-top', 'func-item--over-bottom');
+      if (functieDragSrc === null || functieDragSrc === idx) return;
+
+      const newOrder = [...functieItems];
+      const [moved]  = newOrder.splice(functieDragSrc, 1);
+      let insertAt   = idx;
+      if (functieDragSrc < idx) insertAt--;
+      if (!insertBefore) insertAt++;
+      insertAt = Math.max(0, Math.min(newOrder.length, insertAt));
+      newOrder.splice(insertAt, 0, moved);
+      functieDragSrc = null;
+
+      functieItems = newOrder;
+      renderFunctiesDOM(counts);
+      await Promise.all(newOrder.map((item, i) => updateDoc(doc(db, 'functies', item.id), { volgorde: i })));
+      await loadFuncties();
+      loadWeek();
+      populateBulkFuncties();
+    });
+
+    functiesListEl.appendChild(li);
+  });
+}
+
+document.getElementById('functie-add-btn').addEventListener('click', async () => {
+  const label      = document.getElementById('functie-label').value.trim();
+  const activeColor = document.querySelector('.func-color-swatch--active');
+  const color      = activeColor?.dataset.color || PRESET_COLORS[0];
+  if (!label) { functiesFeedback.textContent = 'Vul een naam in.'; return; }
+  const key  = label.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+  const snap = await getDocs(query(collection(db, 'functies'), orderBy('volgorde')));
+  await setDoc(doc(db, 'functies', key), { label, color, volgorde: snap.size });
+  functiesFeedback.textContent = `✓ "${label}" toegevoegd.`;
+  document.getElementById('functie-label').value = '';
+  await loadFuncties();
+  await renderFunctiesList();
+  loadWeek();
+  populateBulkFuncties();
+});
+
+renderColorSwatches();
+renderFunctiesList();
+
+// ── Dienst voor meerdere dagen ────────────────────────────────────────────
+
+let bulkWeekOffset = 0;
+const bulkWeekLabel  = document.getElementById('bulk-week-label');
+const bulkWeekBadge  = document.getElementById('bulk-week-badge');
+const bulkPrevBtn    = document.getElementById('bulk-prev-week');
+const bulkNextBtn    = document.getElementById('bulk-next-week');
+const bulkPreview    = document.getElementById('bulk-preview');
+const bulkSubmitBtn  = document.getElementById('bulk-submit');
+const bulkFeedback   = document.getElementById('bulk-feedback');
+const bulkForm       = document.getElementById('bulk-form');
+
+function populateBulkFuncties() {
+  const container = document.getElementById('bulk-functies');
+  container.innerHTML = '';
+  SECTION_ORDER.forEach((key, i) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'bulk-functie-btn' + (i === 0 ? ' bulk-functie-btn--active' : '');
+    btn.dataset.key = key;
+    btn.innerHTML = `<span class="bulk-functie-dot" style="background:${SECTIONS[key].color}"></span>${SECTIONS[key].label}`;
+    btn.addEventListener('click', () => {
+      container.querySelectorAll('.bulk-functie-btn').forEach(b => b.classList.remove('bulk-functie-btn--active'));
+      btn.classList.add('bulk-functie-btn--active');
+      updateBulkPreview();
+    });
+    container.appendChild(btn);
+  });
+}
+
+function renderBulkDays() {
+  const container = document.getElementById('bulk-days');
+  const checked = new Set([...container.querySelectorAll('input:checked')].map(i => i.value));
+  container.innerHTML = '';
+  const monday = getMonday(bulkWeekOffset);
+  const names = ['MA','DI','WO','DO','VR','ZA','ZO'];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const label = document.createElement('label');
+    label.className = 'bulk-day';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.value = String(i);
+    if (checked.has(String(i))) input.checked = true;
+    const span = document.createElement('span');
+    span.innerHTML = `<span class="bulk-day__name">${names[i]}</span><span class="bulk-day__date">${d.getDate()}</span>`;
+    label.appendChild(input);
+    label.appendChild(span);
+    label.addEventListener('change', updateBulkPreview);
+    container.appendChild(label);
+  }
+}
+
+function updateDuration() {
+  const start = document.getElementById('bulk-start').value;
+  const end   = document.getElementById('bulk-end').value;
+  const el    = document.getElementById('bulk-duration');
+  if (start && end && start < end) {
+    const [sh, sm] = start.split(':').map(Number);
+    const [eh, em] = end.split(':').map(Number);
+    const hrs = ((eh * 60 + em) - (sh * 60 + sm)) / 60;
+    const r = Math.round(hrs * 10) / 10;
+    el.textContent = (Number.isInteger(r) ? r : r.toString().replace('.', ',')) + 'u';
+  } else {
+    el.textContent = '';
+  }
+}
+
+function updateBulkPreview() {
+  const name  = document.getElementById('bulk-name').value.trim();
+  const start = document.getElementById('bulk-start').value;
+  const end   = document.getElementById('bulk-end').value;
+  const days  = [...document.querySelectorAll('#bulk-days input:checked')];
+  const active = document.querySelector('.bulk-functie-btn--active');
+
+  if (!name) {
+    bulkPreview.textContent = 'Vul een naam in om een dienst te plannen.';
+    bulkSubmitBtn.disabled = true;
+    return;
+  }
+  if (days.length === 0) {
+    bulkPreview.textContent = 'Selecteer minimaal één dag.';
+    bulkSubmitBtn.disabled = true;
+    return;
+  }
+  if (!start || !end || start >= end) {
+    bulkPreview.textContent = 'Vul een geldige begin- en eindtijd in.';
+    bulkSubmitBtn.disabled = true;
+    return;
+  }
+  const functieLabel = active ? SECTIONS[active.dataset.key]?.label : '';
+  bulkPreview.textContent = `${name} · ${functieLabel} · ${start}–${end} · ${days.length} dag${days.length > 1 ? 'en' : ''}`;
+  bulkSubmitBtn.disabled = false;
+}
+
+function updateBulkWeekLabel() {
+  const monday = getMonday(bulkWeekOffset);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  bulkWeekLabel.textContent = `${monday.getDate()} ${MONTHS[monday.getMonth()]} – ${sunday.getDate()} ${MONTHS[sunday.getMonth()]}`;
+  const badge = bulkWeekOffset === 0 ? 'Deze week' : bulkWeekOffset === 1 ? 'Volgende week' : '';
+  bulkWeekBadge.textContent = badge;
+  bulkWeekBadge.hidden = !badge;
+  bulkPrevBtn.disabled = bulkWeekOffset === 0;
+  renderBulkDays();
+}
+
+bulkPrevBtn.addEventListener('click', () => { if (bulkWeekOffset > 0) { bulkWeekOffset--; updateBulkWeekLabel(); } });
+bulkNextBtn.addEventListener('click', () => { bulkWeekOffset++; updateBulkWeekLabel(); });
+
+document.getElementById('bulk-select-all').addEventListener('click', () => {
+  const inputs = [...document.querySelectorAll('#bulk-days input')];
+  const allChecked = inputs.every(i => i.checked);
+  inputs.forEach(i => i.checked = !allChecked);
+  updateBulkPreview();
+});
+
+document.getElementById('bulk-name').addEventListener('input', updateBulkPreview);
+document.getElementById('bulk-start').addEventListener('change', () => { updateDuration(); updateBulkPreview(); });
+document.getElementById('bulk-end').addEventListener('change', () => { updateDuration(); updateBulkPreview(); });
+
+bulkForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  const name    = document.getElementById('bulk-name').value.trim();
+  const active  = document.querySelector('.bulk-functie-btn--active');
+  const functie = active?.dataset.key;
+  const start   = document.getElementById('bulk-start').value;
+  const end     = document.getElementById('bulk-end').value;
+  const days    = [...document.querySelectorAll('#bulk-days input:checked')].map(cb => parseInt(cb.value));
+
+  if (!name || !functie || !start || !end || start >= end || days.length === 0) return;
+
+  bulkSubmitBtn.disabled = true;
+  bulkFeedback.textContent = '';
+
+  const monday = getMonday(bulkWeekOffset);
+  const entry  = { name, start, end };
+
+  try {
+    await Promise.all(days.map(async dayIdx => {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + dayIdx);
+      const ref  = doc(db, 'rooster', toDateKey(d));
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        await updateDoc(ref, { [functie]: arrayUnion(entry) });
+      } else {
+        await setDoc(ref, { [functie]: [entry] });
+      }
+    }));
+    bulkFeedback.textContent = `✓ Dienst toegevoegd voor ${days.length} dag${days.length > 1 ? 'en' : ''}.`;
+    document.getElementById('bulk-name').value = '';
+    document.querySelectorAll('#bulk-days input').forEach(cb => cb.checked = false);
+    updateBulkPreview();
+    loadWeek();
+  } catch {
+    bulkFeedback.textContent = 'Opslaan mislukt. Probeer opnieuw.';
+    bulkSubmitBtn.disabled = false;
+  }
+});
+
+updateBulkWeekLabel();
+populateBulkFuncties();
+
+// ── Tabs ──────────────────────────────────────────────────────────────────
+
+document.querySelectorAll('.mgmt-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mgmt-tab').forEach(b => b.classList.remove('mgmt-tab--active'));
+    document.querySelectorAll('.mgmt-tab-content').forEach(c => { c.hidden = true; });
+    btn.classList.add('mgmt-tab--active');
+    document.getElementById('tab-' + btn.dataset.tab).hidden = false;
+  });
+});
 
 } // end initDashboard

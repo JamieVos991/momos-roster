@@ -20,30 +20,14 @@
         <form id="login-form" class="roster-form" novalidate>
           <div class="form-group">
             <label for="login-email">E-mailadres</label>
-            <input
-              type="email"
-              id="login-email"
-              name="email"
-              autocomplete="username"
-              required
-            />
+            <input type="email" id="login-email" name="email" autocomplete="username" required />
           </div>
           <div class="form-group">
             <label for="login-password">Wachtwoord</label>
-            <input
-              type="password"
-              id="login-password"
-              name="password"
-              autocomplete="current-password"
-              required
-            />
+            <input type="password" id="login-password" name="password" autocomplete="current-password" required />
           </div>
           <button type="submit" class="btn btn--primary">Inloggen</button>
-          <p
-            class="form-feedback form-feedback--error"
-            id="login-error"
-            aria-live="polite"
-          ></p>
+          <p class="form-feedback form-feedback--error" id="login-error" aria-live="polite"></p>
         </form>
       </div>
     </div>
@@ -51,128 +35,250 @@
     <header class="site-header" id="site-header" hidden>
       <a href="index.html" class="btn btn--ghost">← Rooster</a>
       <span class="logo">Beheer</span>
-      <!-- <a href="weekrooster.html" class="btn btn--ghost">Weekrooster</a> -->
       <button class="btn btn--ghost" id="logout-btn">Uitloggen</button>
     </header>
 
     <main id="main" class="dashboard" hidden>
+
+      <!-- ── Rooster ── -->
       <section class="dashboard__overview">
         <div class="dashboard__overview-header">
           <h2>Geplande diensten</h2>
           <div class="overview-nav">
-            <button
-              class="dash-nav-btn"
-              id="prev-week"
-              aria-label="Vorige week"
-            >
-              &#8249;
-            </button>
+            <button class="dash-nav-btn" id="prev-week">Vorige</button>
             <span id="week-label" class="week-label"></span>
-            <button
-              class="dash-nav-btn"
-              id="next-week"
-              aria-label="Volgende week"
-            >
-              &#8250;
-            </button>
+            <button class="dash-nav-btn" id="next-week">Volgende</button>
           </div>
         </div>
         <div class="week-grid" id="week-grid"></div>
       </section>
 
-      <section class="dashboard__overview" style="max-width: 600px">
-        <div class="dashboard__overview-header">
-          <h2>Evenement toevoegen</h2>
+      <!-- ── Beheertabs ── -->
+      <div class="mgmt-panel">
+        <div class="mgmt-tab-bar">
+          <button class="mgmt-tab mgmt-tab--active" data-tab="diensten">Diensten</button>
+          <button class="mgmt-tab" data-tab="evenementen">Evenementen</button>
+          <button class="mgmt-tab" data-tab="beheer">Beheer</button>
+          <button class="mgmt-tab" data-tab="verlof">Verlof</button>
+          <button class="mgmt-tab" data-tab="mijn">Mijn rooster</button>
         </div>
-        <div class="dashboard__section-body">
-          <form id="event-form" class="roster-form" novalidate>
-            <div class="form-group">
-              <label for="event-date">Datum</label>
-              <input type="date" id="event-date" name="event-date" required />
-            </div>
-            <div class="form-group">
-              <label for="event-title">Titel</label>
-              <input
-                type="text"
-                id="event-title"
-                name="event-title"
-                placeholder="Bijv. Personeelsfeest"
-                required
-                autocomplete="off"
-              />
-            </div>
-            <div class="form-group">
-              <label for="event-desc"
-                >Omschrijving
-                <span style="font-weight: 400; text-transform: none"
-                  >(optioneel)</span
-                ></label
-              >
-              <textarea
-                id="event-desc"
-                name="event-desc"
-                rows="3"
-                placeholder="Extra info…"
-              ></textarea>
-            </div>
-            <button type="submit" class="btn btn--primary">Toevoegen</button>
-            <p class="form-feedback" id="event-feedback" aria-live="polite"></p>
-          </form>
-        </div>
-      </section>
 
-      <section class="dashboard__overview" style="max-width: 600px">
-        <div class="dashboard__overview-header">
-          <h2>Aankomende evenementen</h2>
-        </div>
-        <div class="dashboard__section-body">
-          <ul
-            class="events-list events-list--manage"
-            id="dashboard-events-list"
-          ></ul>
-        </div>
-      </section>
-
-      <section class="dashboard__overview" style="max-width: 600px">
-        <div class="dashboard__overview-header">
-          <h2>Verlof invoeren</h2>
-        </div>
-        <div class="dashboard__section-body">
-          <form id="verlof-form" class="roster-form" novalidate>
-            <div class="form-group">
-              <label for="verlof-naam">Naam</label>
-              <input type="text" id="verlof-naam" placeholder="Bijv. Jamie" required autocomplete="off" />
-            </div>
-            <div style="display:flex;gap:1rem">
-              <div class="form-group" style="flex:1">
-                <label for="verlof-van">Van</label>
-                <input type="date" id="verlof-van" required />
-              </div>
-              <div class="form-group" style="flex:1">
-                <label for="verlof-tot">Tot en met</label>
-                <input type="date" id="verlof-tot" required />
+        <!-- Diensten -->
+        <div class="mgmt-tab-content mgmt-tab-content--flush" id="tab-diensten">
+          <div class="bulk-panel">
+            <div class="bulk-panel__header">
+              <div class="bulk-panel__icon">+</div>
+              <div>
+                <div class="bulk-panel__title">Dienst toevoegen</div>
+                <div class="bulk-panel__sub">Plan één of meer diensten in deze week in</div>
               </div>
             </div>
-            <button type="submit" class="btn btn--primary">Toevoegen</button>
-            <p class="form-feedback" id="verlof-feedback" aria-live="polite"></p>
-          </form>
-          <ul class="verlof-list" id="verlof-list"></ul>
-        </div>
-      </section>
+            <div class="bulk-panel__body">
+              <form id="bulk-form" novalidate>
 
-      <section class="dashboard__mine">
-        <h2>Mijn rooster</h2>
-        <div class="form-group">
-          <label for="my-name">Jouw naam</label>
-          <input
-            type="text"
-            id="my-name"
-            placeholder="Bijv. Lisa"
-            autocomplete="off"
-          />
+                <div class="bulk-field">
+                  <label class="bulk-label">Naam medewerker</label>
+                  <div class="bulk-name-row">
+                    <div class="bulk-avatar">+</div>
+                    <input type="text" id="bulk-name" class="bulk-input" placeholder="Naam medewerker" autocomplete="off" />
+                  </div>
+                </div>
+
+                <div class="bulk-field">
+                  <label class="bulk-label">Functie</label>
+                  <div class="bulk-functies" id="bulk-functies"></div>
+                </div>
+
+                <div class="bulk-field">
+                  <div class="bulk-time-row">
+                    <div class="bulk-time-col">
+                      <label class="bulk-label">Begin</label>
+                      <input type="time" id="bulk-start" class="bulk-input" value="12:00" />
+                    </div>
+                    <div class="bulk-duration" id="bulk-duration">10u</div>
+                    <div class="bulk-time-col">
+                      <label class="bulk-label">Einde</label>
+                      <input type="time" id="bulk-end" class="bulk-input" value="22:00" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="bulk-field">
+                  <label class="bulk-label">Week</label>
+                  <div class="bulk-week-nav">
+                    <button type="button" class="bulk-week-arrow" id="bulk-prev-week">‹</button>
+                    <div class="bulk-week-center">
+                      <span id="bulk-week-label"></span>
+                      <span class="bulk-week-badge" id="bulk-week-badge" hidden></span>
+                    </div>
+                    <button type="button" class="bulk-week-arrow" id="bulk-next-week">›</button>
+                  </div>
+                </div>
+
+                <div class="bulk-field">
+                  <div class="bulk-days-header">
+                    <label class="bulk-label">Dagen</label>
+                    <button type="button" class="bulk-select-all-btn" id="bulk-select-all">Selecteer alle</button>
+                  </div>
+                  <div class="bulk-days" id="bulk-days"></div>
+                </div>
+
+                <div class="bulk-preview-box" id="bulk-preview">Vul een naam in om een dienst te plannen.</div>
+
+                <button type="submit" class="bulk-submit-btn" id="bulk-submit" disabled>Toevoegen</button>
+                <p class="form-feedback" id="bulk-feedback" aria-live="polite"></p>
+              </form>
+            </div>
+          </div>
         </div>
-        <ul class="my-shifts" id="my-shifts"></ul>
-      </section>
+
+        <!-- Evenementen -->
+        <div class="mgmt-tab-content mgmt-tab-content--flush" id="tab-evenementen" hidden>
+          <div class="ev-panel">
+            <div class="ev-panel__header">
+              <div class="ev-panel__icon">★</div>
+              <div>
+                <div class="ev-panel__title">Evenementen</div>
+                <div class="ev-panel__sub">Reserveringen en speciale dagen beheren</div>
+              </div>
+              <span class="ev-panel__count" id="ev-count"></span>
+            </div>
+            <div class="ev-panel__body">
+              <div class="ev-panel__left">
+                <span class="ev-section-label">Toevoegen</span>
+                <form id="event-form" novalidate>
+                  <div class="ev-field">
+                    <label class="ev-label" for="event-date">Datum</label>
+                    <input type="date" id="event-date" name="event-date" class="bulk-input" required />
+                  </div>
+                  <div class="ev-field">
+                    <label class="ev-label" for="event-title">Titel</label>
+                    <input type="text" id="event-title" name="event-title" class="bulk-input" placeholder="Bijv. Personeelsfeest" required autocomplete="off" />
+                  </div>
+                  <div class="ev-field">
+                    <label class="ev-label" for="event-desc">Omschrijving <span class="ev-label__opt">· optioneel</span></label>
+                    <textarea id="event-desc" name="event-desc" class="bulk-input" rows="4" placeholder="Tijd, aantal gasten, extra info..."></textarea>
+                  </div>
+                  <button type="submit" class="bulk-submit-btn">Toevoegen</button>
+                  <p class="form-feedback" id="event-feedback" aria-live="polite"></p>
+                </form>
+              </div>
+              <div class="ev-panel__right">
+                <div class="ev-list-header">
+                  <span class="ev-section-label">Aankomend</span>
+                  <span class="ev-sort-label">Op datum gesorteerd</span>
+                </div>
+                <ul class="ev-list" id="dashboard-events-list"></ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Beheer -->
+        <div class="mgmt-tab-content" id="tab-beheer" hidden>
+
+          <div class="func-panel">
+            <div class="func-panel__header">
+              <div class="func-panel__icon">≡</div>
+              <div>
+                <div class="func-panel__title">Functies</div>
+                <div class="func-panel__sub">Afdelingen beheren · sleep om te ordenen</div>
+              </div>
+            </div>
+            <div class="func-panel__body">
+              <ul class="func-list" id="functies-list"></ul>
+              <div class="func-add">
+                <div class="func-add__label">Nieuwe functie</div>
+                <div class="func-add__row">
+                  <input type="text" id="functie-label" class="bulk-input" placeholder="Bijv. Bar" autocomplete="off" />
+                  <button type="button" id="functie-add-btn" class="func-add__btn">+ Toevoegen</button>
+                </div>
+                <div class="func-add__colors">
+                  <span class="func-add__kleur-label">Kleur</span>
+                  <div class="func-color-swatches" id="func-color-swatches"></div>
+                </div>
+                <p class="form-feedback" id="functies-feedback" aria-live="polite"></p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Verlof -->
+        <div class="mgmt-tab-content mgmt-tab-content--flush" id="tab-verlof" hidden>
+          <div class="verl-panel">
+            <div class="verl-panel__header">
+              <div class="verl-panel__icon">☂</div>
+              <div>
+                <div class="verl-panel__title">Verlof</div>
+                <div class="verl-panel__sub">Vrije dagen en afwezigheid registreren</div>
+              </div>
+              <span class="verl-panel__count" id="verl-count"></span>
+            </div>
+            <div class="verl-panel__body">
+              <form id="verlof-form" novalidate>
+                <div class="ev-field">
+                  <label class="ev-label" for="verlof-naam">Naam medewerker</label>
+                  <input type="text" id="verlof-naam" class="bulk-input" placeholder="Bijv. Jamie" required autocomplete="off" />
+                </div>
+                <div class="verl-dates">
+                  <div class="ev-field" style="flex:1">
+                    <label class="ev-label" for="verlof-van">Van</label>
+                    <input type="date" id="verlof-van" class="bulk-input" required />
+                  </div>
+                  <div class="ev-field" style="flex:1">
+                    <label class="ev-label" for="verlof-tot">Tot en met</label>
+                    <input type="date" id="verlof-tot" class="bulk-input" required />
+                  </div>
+                </div>
+                <button type="submit" class="bulk-submit-btn">Verlof toevoegen</button>
+                <p class="form-feedback" id="verlof-feedback" aria-live="polite"></p>
+              </form>
+              <div class="verl-list-header">
+                <span class="ev-section-label" style="margin-bottom:0">Verloflijst</span>
+                <span class="ev-sort-label">Op begindatum gesorteerd</span>
+              </div>
+              <ul class="verl-list" id="verlof-list"></ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mijn rooster -->
+        <div class="mgmt-tab-content mgmt-tab-content--flush" id="tab-mijn" hidden>
+          <div class="mijn-panel">
+            <div class="mijn-panel__header">
+              <div class="mijn-panel__icon">◷</div>
+              <div>
+                <div class="mijn-panel__title">Mijn rooster</div>
+                <div class="mijn-panel__sub">Zoek een medewerker en bekijk de diensten</div>
+              </div>
+            </div>
+            <div class="mijn-panel__body">
+              <div class="ev-field">
+                <label class="ev-label" for="my-name">Zoek op naam</label>
+                <div class="mijn-search-wrap">
+                  <span class="mijn-search-icon">○</span>
+                  <input type="text" id="my-name" class="bulk-input mijn-search-input" placeholder="Bijv. Lisa" autocomplete="off" />
+                </div>
+              </div>
+              <div class="ev-field" style="margin-top:0.25rem">
+                <label class="ev-label">Week</label>
+                <div class="bulk-week-nav">
+                  <button type="button" class="bulk-week-arrow" id="mijn-prev-week">‹</button>
+                  <div class="bulk-week-center">
+                    <span id="mijn-week-label"></span>
+                    <span class="bulk-week-badge" id="mijn-week-badge"></span>
+                  </div>
+                  <button type="button" class="bulk-week-arrow" id="mijn-next-week">›</button>
+                </div>
+              </div>
+              <div class="mijn-chips" id="mijn-chips"></div>
+              <div id="mijn-result"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </main>
 
     <script type="module" src="scripts/dashboard.js"></script>
