@@ -131,7 +131,7 @@ async function loadPubMijnData() {
   updatePubWeekLabel();
   const monday = getMonday(pubWeekOffset);
   const dates  = Array.from({ length: 7 }, (_, i) => { const d = new Date(monday); d.setDate(monday.getDate() + i); return d; });
-  const snaps  = await Promise.all(dates.map(d => getDoc(doc(db, 'rooster', toLocalKey(d)))));
+  const snaps  = await Promise.all(dates.map(d => getDoc(doc(db, 'rooster', toDateKey(d)))));
   pubWeekData  = snaps.map(s => s.exists() ? s.data() : {});
 
   const nameSet = new Set();
