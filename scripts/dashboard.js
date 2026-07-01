@@ -52,22 +52,31 @@ function money(n) { return '€' + Math.round(n).toLocaleString('nl-NL'); }
 function tint(hex) { return hex + '24'; }
 
 const loginOverlay = document.getElementById("login-overlay");
-const siteHeader = document.getElementById("site-header");
-const mainEl = document.getElementById("main");
-const loginForm = document.getElementById("login-form");
-const loginError = document.getElementById("login-error");
-const logoutBtn = document.getElementById("logout-btn");
+const siteHeader   = document.getElementById("site-header");
+const appNav       = document.getElementById("app-nav");
+const mainEl       = document.getElementById("main");
+const loginForm    = document.getElementById("login-form");
+const loginError   = document.getElementById("login-error");
+const logoutBtn    = document.getElementById("logout-btn");
 
 onAuthStateChanged(auth, user => {
   if (user) {
     loginOverlay.hidden = true;
-    siteHeader.hidden = false;
-    mainEl.hidden = false;
+    siteHeader.hidden   = false;
+    appNav.hidden       = false;
+    mainEl.hidden       = false;
+    // Set user info in header
+    const nameEl   = document.getElementById('app-user-name');
+    const avatarEl = document.getElementById('app-user-avatar');
+    const display  = user.displayName || user.email.split('@')[0];
+    if (nameEl)   nameEl.textContent   = display;
+    if (avatarEl) avatarEl.textContent = display.charAt(0).toUpperCase();
     initDashboard();
   } else {
     loginOverlay.hidden = false;
-    siteHeader.hidden = true;
-    mainEl.hidden = true;
+    siteHeader.hidden   = true;
+    appNav.hidden       = true;
+    mainEl.hidden       = true;
   }
 });
 
@@ -602,6 +611,8 @@ document.getElementById("event-date").valueAsDate = new Date();
 loadUpcomingEvents(dashboardEventsList, { manage: true, onLoad: n => {
   const el = document.getElementById('ev-count');
   if (el) el.textContent = `${n} evenement${n !== 1 ? 'en' : ''}`;
+  const badge = document.getElementById('ev-nav-badge');
+  if (badge) { badge.textContent = n; badge.hidden = n === 0; }
 }});
 
 eventForm.addEventListener("submit", async (e) => {
@@ -622,6 +633,8 @@ eventForm.addEventListener("submit", async (e) => {
   loadUpcomingEvents(dashboardEventsList, { manage: true, onLoad: n => {
   const el = document.getElementById('ev-count');
   if (el) el.textContent = `${n} evenement${n !== 1 ? 'en' : ''}`;
+  const badge = document.getElementById('ev-nav-badge');
+  if (badge) { badge.textContent = n; badge.hidden = n === 0; }
 }});
 });
 
@@ -822,6 +835,8 @@ async function loadVerlofList() {
 
   const countEl = document.getElementById('verl-count');
   if (countEl) countEl.textContent = snap.size ? `${snap.size} aanvrage${snap.size !== 1 ? 'n' : ''}` : '';
+  const badge = document.getElementById('verl-nav-badge');
+  if (badge) { badge.textContent = snap.size; badge.hidden = snap.size === 0; }
 
   if (snap.empty) {
     verlofList.innerHTML = '<li class="verl-item verl-item--empty">Geen actief verlof.</li>';
@@ -1183,11 +1198,11 @@ populateBulkFuncties();
 
 // ── Tabs ──────────────────────────────────────────────────────────────────
 
-document.querySelectorAll('.mgmt-tab').forEach(btn => {
+document.querySelectorAll('.app-tab').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.mgmt-tab').forEach(b => b.classList.remove('mgmt-tab--active'));
-    document.querySelectorAll('.mgmt-tab-content').forEach(c => { c.hidden = true; });
-    btn.classList.add('mgmt-tab--active');
+    document.querySelectorAll('.app-tab').forEach(b => b.classList.remove('app-tab--active'));
+    document.querySelectorAll('.app-tab-content').forEach(c => { c.hidden = true; });
+    btn.classList.add('app-tab--active');
     document.getElementById('tab-' + btn.dataset.tab).hidden = false;
   });
 });

@@ -4,17 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Momo's Rooster</title>
-    <meta
-      name="description"
-      content="Bekijk wie er vandaag werken bij Momo's."
-    />
+    <meta name="description" content="Bekijk wie er vandaag werken bij Momo's." />
     <link rel="icon" href="images/favicon.png" />
     <link rel="stylesheet" href="styles/styleguide.css" />
     <link rel="stylesheet" href="styles/style.css" />
     <link rel="stylesheet" href="styles/weekrooster.css" />
-    <script>
-      document.documentElement.classList.add("js");
-    </script>
+    <script>document.documentElement.classList.add("js");</script>
   </head>
   <body>
     <header class="site-header">
@@ -23,23 +18,13 @@
     </header>
 
     <main id="main" class="public-main">
+
       <section class="dashboard__overview">
         <div class="dashboard__overview-header">
-          <div
-            class="overview-nav"
-            style="flex: 1; justify-content: space-between"
-          >
-            <button class="dash-nav-btn" id="prev-day" aria-label="Vorige dag">
-              &#8249;
-            </button>
-            <h2 id="day-title" style="margin: 0; font-size: 1rem">Laden…</h2>
-            <button
-              class="dash-nav-btn"
-              id="next-day"
-              aria-label="Volgende dag"
-            >
-              &#8250;
-            </button>
+          <div class="overview-nav" style="flex:1;justify-content:space-between">
+            <button class="dash-nav-btn" id="prev-day" aria-label="Vorige dag">&#8249;</button>
+            <h2 id="day-title" style="margin:0;font-size:1rem">Laden…</h2>
+            <button class="dash-nav-btn" id="next-day" aria-label="Volgende dag">&#8250;</button>
           </div>
         </div>
         <div class="dashboard__section-body">
@@ -53,40 +38,57 @@
               <ul class="card-list" id="list-keuken"></ul>
             </section>
           </div>
-          <p class="empty-state" id="empty-state" hidden>
-            Geen diensten ingepland voor deze dag.
-          </p>
+          <p class="empty-state" id="empty-state" hidden>Geen diensten ingepland voor deze dag.</p>
         </div>
       </section>
 
-      <!-- <section class="dashboard__overview">
-        <div class="dashboard__overview-header">
-          <h2>Evenementen</h2>
-        </div>
-        <div class="dashboard__section-body">
-          <ul class="events-list" id="events-list">
-            <li class="event-card event-card--loading"></li>
-          </ul>
-        </div>
-      </section> -->
-
-      <section class="dashboard__overview">
-        <div class="dashboard__overview-header">
-          <h2>Mijn rooster</h2>
-        </div>
-        <div class="dashboard__section-body">
-          <div class="form-group" style="margin-bottom: 1rem">
-            <label for="my-name">Jouw naam</label>
-            <input
-              type="text"
-              id="my-name"
-              placeholder="Bijv. Lisa"
-              autocomplete="off"
-            />
+      <div class="open-panel">
+        <div class="open-panel__header">
+          <div class="open-panel__icon">◷</div>
+          <div>
+            <div class="open-panel__title">Open diensten</div>
+            <div class="open-panel__sub">Beschikbare diensten om op te pakken</div>
           </div>
-          <ul class="my-shifts" id="my-shifts"></ul>
+          <span class="open-panel__count" id="open-count"></span>
         </div>
-      </section>
+        <div class="open-panel__body">
+          <div class="open-filter" id="open-filter"></div>
+          <ul class="open-list" id="open-list"></ul>
+        </div>
+      </div>
+
+      <div class="mijn-panel" style="max-width:680px">
+        <div class="mijn-panel__header">
+          <div class="mijn-panel__icon">◷</div>
+          <div>
+            <div class="mijn-panel__title">Mijn rooster</div>
+            <div class="mijn-panel__sub">Zoek je naam en bekijk je diensten</div>
+          </div>
+        </div>
+        <div class="mijn-panel__body">
+          <div class="ev-field">
+            <label class="ev-label" for="my-name">Zoek op naam</label>
+            <div class="mijn-search-wrap">
+              <span class="mijn-search-icon">○</span>
+              <input type="text" id="my-name" class="bulk-input mijn-search-input" placeholder="Bijv. Lisa" autocomplete="off" />
+            </div>
+          </div>
+          <div class="ev-field" style="margin-top:0.25rem">
+            <label class="ev-label">Week</label>
+            <div class="bulk-week-nav">
+              <button type="button" class="bulk-week-arrow" id="mijn-prev-week">‹</button>
+              <div class="bulk-week-center">
+                <span id="mijn-week-label"></span>
+                <span class="bulk-week-badge" id="mijn-week-badge"></span>
+              </div>
+              <button type="button" class="bulk-week-arrow" id="mijn-next-week">›</button>
+            </div>
+          </div>
+          <div class="mijn-chips" id="mijn-chips"></div>
+          <div id="mijn-result"></div>
+        </div>
+      </div>
+
     </main>
 
     <script type="module" src="scripts/roster.js"></script>
