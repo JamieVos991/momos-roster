@@ -146,7 +146,6 @@ async function loadWeek() {
   sunday.setDate(monday.getDate() + 6);
   const wn = weekKey(weekOffset).split('-W')[1];
   weekLabel.textContent = `Week ${wn} · ${monday.getDate()} ${MONTHS[monday.getMonth()]} – ${sunday.getDate()} ${MONTHS[sunday.getMonth()]}`;
-  prevWeekBtn.disabled = weekOffset === 0;
 
   weekGrid.innerHTML = '<p style="padding:1.5rem;color:#aaa;font-style:italic">Laden…</p>';
 
@@ -598,7 +597,7 @@ function openEditShiftModal(d, secKey, entry) {
   document.getElementById('wr-modal-name').focus();
 }
 
-prevWeekBtn.addEventListener("click", () => { if (weekOffset > 0) { weekOffset--; loadWeek(); } });
+prevWeekBtn.addEventListener("click", () => { weekOffset--; loadWeek(); });
 nextWeekBtn.addEventListener("click", () => { weekOffset++; loadWeek(); });
 
 // ── Evenementen ──
@@ -656,13 +655,12 @@ function updateMijnWeekLabel() {
   const monday = getMonday(mijnWeekOffset);
   const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
   mijnWeekLabel.textContent = `${monday.getDate()} ${MONTHS[monday.getMonth()]} – ${sunday.getDate()} ${MONTHS[sunday.getMonth()]}`;
-  const badge = mijnWeekOffset === 0 ? 'Deze week' : mijnWeekOffset === 1 ? 'Volgende week' : '';
+  const badge = mijnWeekOffset === 0 ? 'Deze week' : mijnWeekOffset === 1 ? 'Volgende week' : mijnWeekOffset === -1 ? 'Vorige week' : '';
   mijnWeekBadge.textContent = badge;
   mijnWeekBadge.hidden = !badge;
-  mijnPrevBtn.disabled = mijnWeekOffset === 0;
 }
 
-mijnPrevBtn.addEventListener('click', () => { if (mijnWeekOffset > 0) { mijnWeekOffset--; loadMijnData(); } });
+mijnPrevBtn.addEventListener('click', () => { mijnWeekOffset--; loadMijnData(); });
 mijnNextBtn.addEventListener('click', () => { mijnWeekOffset++; loadMijnData(); });
 
 function mijnCalcH(start, end) {

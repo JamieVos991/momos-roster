@@ -121,10 +121,9 @@ function updatePubWeekLabel() {
   const monday = getMonday(pubWeekOffset);
   const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
   mijnWeekLabel.textContent = `${monday.getDate()} ${MONTHS[monday.getMonth()]} – ${sunday.getDate()} ${MONTHS[sunday.getMonth()]}`;
-  const badge = pubWeekOffset === 0 ? 'Deze week' : pubWeekOffset === 1 ? 'Volgende week' : '';
+  const badge = pubWeekOffset === 0 ? 'Deze week' : pubWeekOffset === 1 ? 'Volgende week' : pubWeekOffset === -1 ? 'Vorige week' : '';
   mijnWeekBadge.textContent = badge;
   mijnWeekBadge.hidden = !badge;
-  mijnPrevBtn.disabled = pubWeekOffset === 0;
 }
 
 async function loadPubMijnData() {
@@ -228,7 +227,7 @@ function renderPubResult(naam) {
     </div>`;
 }
 
-mijnPrevBtn.addEventListener('click', () => { if (pubWeekOffset > 0) { pubWeekOffset--; loadPubMijnData(); } });
+mijnPrevBtn.addEventListener('click', () => { pubWeekOffset--; loadPubMijnData(); });
 mijnNextBtn.addEventListener('click', () => { pubWeekOffset++; loadPubMijnData(); });
 
 myNameInput.addEventListener('input', () => {
